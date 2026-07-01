@@ -166,6 +166,77 @@
 1. 进入 `Plan.md` 的 Sprint 0。
 2. 确认 Web/Tauri 取舍和前端技术栈。
 3. 初始化工程、Schema、示例数据和页面骨架。
+## 2026-07-02：阶段B.3 真实模型联调与阶段B验收收口
+
+本次目标：
+- 完成阶段B验收收口：E2E测试、幂等提交、revision冲突、手动降级全覆盖。
+- 使用脱敏中文样本真实跑通 profile-builder 和 jd-analyzer。
+- 验证模型输出通过 Zod Schema、sourceQuote 可定位、无编造、低置信度状态正确。
+- 修正 Plan.md 中 Sprint 1 状态与未完成任务之间的矛盾。
+
+修改文件：
+- `Plan.md`
+- `history.md`
+- `package.json`
+- `vitest.ai-real.config.ts`（新增）
+- `tests/ai-real/_server-only-mock.ts`（新增）
+- `tests/ai-real/stageBRealProvider.test.ts`
+- `tests/unit/storage.test.ts`
+- `tests/e2e/phaseBFlow.spec.ts`（新增）
+- `src/ai/tasks/registry.ts`
+- `src/app/api/ai/structured/route.ts`
+
+修改内容：
+- 扩充 `tests/ai-real/stageBRealProvider.test.ts`：3 个真实模型测试全部通过。
+- 新增 `coerceRawOutput` 层：模型返回字段名不一致时（如 `type`→`category`、`requirement`→`description`、`reason`→`confidenceReason`、`parsedRequirements`→`requirements`、`jobTitle`→`title`），自动映射到 Schema 期望结构，缺失的 `id`/`createdAt`/`updatedAt`/`hardConstraint`/`needsConfirmation` 等自动补全。
+- `normalizeOutput` 增加防御性检查：`basics`/`requirements`/`skills`/`certificates` 为空或非数组时不崩溃；`sourceQuote` 为非字符串时跳过定位。
+- 服务端路由在 provider 返回后依次执行 `coerceRawOutput` → `normalizeOutput` → Zod 校验。
+- 新增 `vitest.ai-real.config.ts`：独立配置，mock `server-only`，自动加载 `.env.local`，测试超时 60 秒。
+- 扩充 `tests/unit/storage.test.ts`：新增 5 个测试覆盖 JD 幂等 commit、revision 冲突、刷新恢复、provider 失败降级。
+- 新增 `tests/e2e/phaseBFlow.spec.ts`：6 个 Playwright E2E 测试覆盖 Phase B 页面流程。
+- 修正 Plan.md：Sprint 1 后置任务标记 `[>]`，阶段B检查点 B3 标记 `[x]`。
+
+实际模型与 Provider：
+- Provider: openai-compatible（通过 `https://token-plan-cn.xiaomimimo.com/v1`）
+- Model: mimo-v2.5-pro
+
+测试时间：2026-07-02 02:46 UTC
+
+使用脱敏样本：
+- Profile Builder：虚构"北京大学""某科技有限公司""校园二手交易平台"，无真实个人信息。
+- JD Analyzer：虚构"某互联网公司/数据分析实习生"岗位 JD，无真实公司信息。
+
+Profile Builder 结果：
+- 模型返回 experiences + skills + certificates，Schema 一次通过（coerce 后）。
+- sourceQuote 全部可在原文中定位。
+- 无编造学校/组织/奖项。
+
+JD Analyzer 结果：
+- 模型返回 10 条要求，字段名（`type`/`requirement`/`reason`/`parsedRequirements`）与 Schema 不一致，需 coerce。
+- coerce 后 Schema 通过，sourceQuote 全部可定位。
+- 分类：responsibility 3 条、must_have 5 条、nice_to_have 2 条。
+- 无编造要求或技能。
+
+Schema 失败/修复次数：3 次（JD 字段名不一致→新增 coerceRawOutput；title/company 空值→补全 placeholder；skills 非数组→数组检查）。
+
+sourceQuote 定位情况：所有通过 Schema 校验的 sourceQuote 均可在原文中直接或 compact 匹配定位。未定位项自动降级为 `confidenceLevel: low` + `needsConfirmation: true`。
+
+验证命令结果：
+- `pnpm typecheck` 通过。
+- `pnpm lint` 通过。
+- `pnpm test` 通过：3 文件 / 24 测试通过。
+- `pnpm build` 通过。
+- `pnpm test:e2e` 通过：6 测试通过。
+- `pnpm test:ai:real` 通过：3 测试通过（health check + profile-builder + jd-analyzer）。
+
+遗留问题：
+- 模型返回字段名不稳定，coerce 层需随不同模型迭代维护。
+- 阶段B后置能力（经历复制/排序、要求合并、完整富编辑）留作后续增强。
+
+下一步：
+1. 进入阶段C：经历匹配、AI建议与 Fact Guard。
+2. 不提前实现 PDF 导入、正式模板、PDF 导出或登录能力。
+
 ## 2026-07-02：阶段B 职业母档案与 JD 解析工程实现
 
 本次目标：

@@ -24,7 +24,8 @@
 - [x] Sprint 0：工程初始化、数据 Schema、示例数据、页面骨架。
 - [x] 阶段A.1：阶段A收口与端到端集成修复。
 - [x] 阶段B：职业母档案与 JD 解析工程实现。
-- [!] 阶段B真实模型联调：需要本地配置 `AI_API_KEY`、`AI_BASE_URL`、`AI_MODEL` 后分别跑通 Profile Builder 与 JD Analyzer。
+- [x] 阶段B验收收口：真实模型联调通过（mimo-v2.5-pro via openai-compatible）、E2E 覆盖页面流程、幂等提交、revision 冲突、手动降级；coerce 层处理模型字段名差异；所有验证命令通过。
+- [x] 阶段B.3真实模型联调完成：3/3 项测试通过（health check、profile-builder、jd-analyzer），Provider mimo-v2.5-pro，Schema coerce 层处理字段名差异。
 
 ## MVP交付标准
 
@@ -75,7 +76,7 @@
 
 - [x] B1 职业母档案链路：原文保存、隐私确认、服务端白名单AI解析/手动降级、草稿确认、Dexie事务幂等提交、刷新恢复。
 - [x] B2 岗位JD链路：原文保存、隐私确认、服务端白名单AI解析/手动降级、要求确认/删除提示、Dexie事务幂等提交、刷新恢复。
-- [!] B3 真实模型联调：无 API Key 环境下不加入 `pnpm verify`，进入阶段C前必须补跑并记录。
+- [x] B3 真实模型联调与验收收口：profile-builder 和 jd-analyzer 均通过真实模型测试；E2E 覆盖页面流程；单元测试覆盖幂等提交、revision 冲突、手动降级、刷新恢复；`pnpm typecheck/lint/test/build/test:e2e/test:ai:real` 全部通过。
 
 ### 阶段C：经历匹配、AI建议与Fact Guard
 
@@ -148,7 +149,7 @@
 - [x] 实现粘贴文本导入入口。
 - [x] 建立手动分类/半自动分类流程，先不依赖 PDF。
 - [x] 实现基本信息、教育、实习、项目、竞赛/校园、技能、证书/作品草稿确认路径。
-- [ ] 每条经历区分“事实原文”和“简历表达稿”。
+- [>] 每条经历区分”事实原文”和”简历表达稿”；阶段B草稿确认已包含事实原文与 sourceQuote，完整表达稿编辑后置到阶段C/D前收口。
 - [>] 经历复制、排序和完整富编辑后置到阶段C/D前收口；阶段B保留草稿确认。
 - [x] 支持本地持久化和自动保存。
 - [x] 添加低置信度字段提示和用户确认状态。
@@ -342,9 +343,9 @@
 
 ## 下次开发路线
 
-下一步进入阶段B真实模型联调与阶段C准备。
+阶段B核心路径已完成，阶段B验收收口完成。
 
-1. 若本地具备 `AI_API_KEY`，运行 `pnpm test:ai:real` 并人工跑通 Profile Builder 与 JD Analyzer，更新 `history.md`。
-2. 若暂时没有 API Key，保持真实模型联调为 `[!]`，不得声称真实AI解析完成。
-3. 真实模型联调完成后再进入阶段C：经历匹配、AI建议与 Fact Guard。
-4. 仍不进入 PDF 导入、正式模板扩展、正式PDF导出和登录/云端能力。
+1. 若本地具备 `AI_API_KEY` + `AI_MODEL`，运行 `pnpm test:ai:real` 完成真实模型联调并记录结果到 `history.md`。
+2. 真实模型联调通过后进入阶段C：经历匹配、AI建议与 Fact Guard。
+3. 仍不进入 PDF 导入、正式模板扩展、正式PDF导出和登录/云端能力。
+4. 阶段B后置的"经历复制/排序""要求合并""完整富编辑""事实原文与表达稿区分"留作后续增强，不阻塞阶段C核心路径。
