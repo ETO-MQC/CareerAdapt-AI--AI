@@ -2,6 +2,63 @@
 
 本文件记录每次开发完成后的实际修改、验证结果、遗留问题和下一步路线。每次修改代码或文档后，都要同步更新 `Plan.md` 的状态。
 
+## 2026-07-01：阶段A.1 阶段A收口与端到端集成修复
+
+本次目标：
+- 仅修复阶段A审查发现的集成问题，不进入阶段B业务开发。
+- 将页面数据源从直接 demo import 收口到 IndexedDB/Repository，并补齐 AI、缓存、Repository 和日志持久化测试。
+
+修改文件：
+- `Plan.md`
+- `history.md`
+- `src/services/storage/repositories.ts`
+- `src/services/workspace/useWorkspace.ts`
+- `src/components/workspace/WorkspaceStates.tsx`
+- `src/app/HomeWorkspace.tsx`
+- `src/app/page.tsx`
+- `src/app/profile/ProfileWorkspace.tsx`
+- `src/app/profile/page.tsx`
+- `src/app/jobs/JobsWorkspace.tsx`
+- `src/app/jobs/page.tsx`
+- `src/app/resume/ResumeWorkspace.tsx`
+- `src/app/resume/page.tsx`
+- `src/components/resume/A4ResumeProbe.tsx`
+- `src/app/globals.css`
+- `src/ai/persistentService.ts`
+- `src/ai/providers/demoCacheProvider.ts`
+- `src/ai/providers/fallbackProvider.ts`
+- `tests/unit/aiService.test.ts`
+- `tests/unit/storage.test.ts`
+
+修改内容：
+- 将 Sprint 0 状态在修复期间临时调整为 `[~]`，完成验证后恢复为 `[x]`。
+- 新增统一客户端 workspace 加载机制：首次加载执行 `ensureDemoWorkspace` / `seedDemoWorkspace`，再通过 `WorkspaceRepository` 从 IndexedDB 读取 profile 和 jobs，并提供 loading、error、empty 状态。
+- 首页、职业母档案页、岗位页、简历页均改为使用 Repository 数据，不再直接把 `demoCareerProfile` 或 `demoJobDescriptions` 作为页面主要数据源。
+- A4 导出探针优先读取应用 workspace profile；仅在 Repository 数据不可用时使用固定探针数据，并在工具栏明确显示数据来源。
+- 为 `WorkspaceRepository` 补充 `ensureDemoWorkspace` 和 `getMeta`，并覆盖 `saveResumeBranch`、`listResumeBranches`、`saveAiLogs`、`saveExportRecord`、`setMeta/getMeta` 测试。
+- 新增 `PersistentAiService`，确保实际 AI 调用产生的 logs 可写入 IndexedDB，并出现在 workspace JSON 导出中。
+- 新增 `FallbackAiProvider`：主 Provider 失败时尝试 `DemoCacheProvider`，缓存不可用时返回明确失败；补齐降级链测试。
+- 调整 `DemoCacheProvider`，支持缓存命中、未命中 fallback、repair 绕过缓存、底层失败四类路径，并补齐测试。
+- 增加 `AiService` provider 抛异常测试，验证 `provider_failed` 状态。
+- 使用 `CareerProfileSchema` 和 `JobDescriptionSchema` 测试 `profile-builder` 与 `jd-analyzer` 结构化输出。
+
+验证结果：
+- `pnpm typecheck` 通过。
+- `pnpm lint` 通过。
+- `pnpm test` 通过：3 个测试文件，18 个测试通过。
+- `pnpm build` 通过。
+- `pnpm test:e2e` 通过：A4 PDF 探针渲染、中文文本、A4 比例和无溢出检查通过。
+
+遗留问题：
+- A4 探针仍保留固定探针数据作为 Repository 不可用时的 fallback，正式模板和分支业务仍留到后续阶段。
+- 阶段B的真实简历文本解析、JD解析界面、经历匹配、建议卡片、岗位分支业务和正式模板均未实现。
+
+下一步：
+1. 进入阶段B：职业母档案与 JD 解析。
+2. 优先实现粘贴简历文本生成母档案草稿、用户校对、保存母档案。
+3. 接入 JD 粘贴与结构化要求输出，继续沿用阶段A的 Schema、AI Service 和 IndexedDB 底座。
+4. 仍不提前进入经历匹配、AI建议卡片、岗位分支正式业务和正式模板开发。
+
 ## 2026-07-01：完成阶段A / Sprint 0 底座与最小技术验证
 
 本次目标：

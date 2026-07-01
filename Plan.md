@@ -1,4 +1,4 @@
-# 职适AI开发计划
+﻿# 职适AI开发计划
 
 依据：`职适AI_产品需求文档_PRD_v1.0.md`
 
@@ -22,6 +22,7 @@
 
 - [x] 项目开发协作文档初始化：创建 `Plan.md`、`history.md`、`Claude.md`。
 - [x] Sprint 0：工程初始化、数据 Schema、示例数据、页面骨架。
+- [x] 阶段A.1：阶段A收口与端到端集成修复。
 
 ## MVP交付标准
 
@@ -115,6 +116,9 @@
 - [x] 建立基础持久化接口：保存、读取、更新、导出 JSON；MVP 默认使用 IndexedDB/Dexie。
 - [x] 完成最小 PDF 技术探针：静态示例数据 -> A4 HTML 简历 -> 浏览器打印导出 PDF，验证中文字体、单页尺寸和文本可复制。
 - [x] 建立最小验证：Schema 校验、示例数据加载、空状态显示。
+- [x] 阶段A.1收口：页面统一从 IndexedDB/Repository 读取 workspace 数据，首次加载 seed 演示 workspace，提供 loading/error/empty 状态。
+- [x] 阶段A.1收口：A4 导出探针优先读取应用 workspace 数据，并明确区分固定探针数据与应用 workspace 数据。
+- [x] 阶段A.1收口：补齐 provider 异常、Schema 结构化输出、DemoCache、FallbackAiProvider、Repository 写入和 AI 日志持久化测试。
 
 完成定义：
 
