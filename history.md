@@ -166,3 +166,69 @@
 1. 进入 `Plan.md` 的 Sprint 0。
 2. 确认 Web/Tauri 取舍和前端技术栈。
 3. 初始化工程、Schema、示例数据和页面骨架。
+## 2026-07-02：阶段B 职业母档案与 JD 解析工程实现
+
+本次目标：
+- 实现阶段B工程链路：粘贴简历/JD -> 保存原文 -> 隐私确认 -> 服务端白名单AI解析或手动降级 -> 草稿确认 -> Dexie事务幂等提交正式数据。
+- 严格保留草稿层与正式事实层分离，不进入阶段C的经历匹配、AI建议、Fact Guard建议卡片、岗位分支和正式导出。
+
+修改文件：
+- `Plan.md`
+- `history.md`
+- `.env.example`
+- `package.json`
+- `src/domain/schemas/importDraft.ts`
+- `src/domain/schemas/index.ts`
+- `src/domain/schemas/job.ts`
+- `src/domain/schemas/ai.ts`
+- `src/domain/mappers/profileDraftMapper.ts`
+- `src/domain/mappers/jobDraftMapper.ts`
+- `src/services/security/text.ts`
+- `src/services/storage/db.ts`
+- `src/services/storage/repositories.ts`
+- `src/ai/service.ts`
+- `src/ai/provider.ts`
+- `src/ai/client.ts`
+- `src/ai/prompts/profileBuilder.ts`
+- `src/ai/prompts/jdAnalyzer.ts`
+- `src/ai/tasks/registry.ts`
+- `src/ai/providers/demoCacheProvider.ts`
+- `src/ai/providers/openAiCompatibleProvider.ts`
+- `src/app/api/ai/structured/route.ts`
+- `src/app/profile/ProfileWorkspace.tsx`
+- `src/app/jobs/JobsWorkspace.tsx`
+- `src/app/globals.css`
+- `tests/unit/aiService.test.ts`
+- `tests/unit/storage.test.ts`
+- `tests/ai-real/stageBRealProvider.test.ts`
+
+修改内容：
+- 新增阶段B草稿 Schema：`RawInputDocument`、`ProfileImportDraft`、`JobAnalysisDraft`、`ProfileBuilderOutput`、`JdAnalyzerOutput`、`DraftCommit`。
+- 新增 Mapper，确保 AI 草稿结构只通过独立转换进入现有 `CareerProfile` / `JobDescription`，不建立第二套正式数据模型。
+- Dexie 升级到 v2，新增 raw input、profile draft、job draft、draft commit 表；Repository 提供 revision 校验、自动保存、刷新恢复、幂等 commit 和 workspace JSON 导出。
+- 新增服务端 AI Route：前端只提交白名单任务名和业务输入；服务端根据任务注册表选择 Prompt、版本和 Schema，并在返回前完成 Zod 校验。
+- 真实模型 Provider 使用 `server-only`，环境变量统一为 `AI_PROVIDER`、`AI_API_KEY`、`AI_BASE_URL`、`AI_MODEL`；新增无密钥 `.env.example`。
+- 首次外部模型调用前，Profile/JD 页面展示数据发送与隐私说明；用户拒绝则进入手动模式。
+- 默认脱敏手机号、邮箱、身份证号、精确地址后再发送外部模型；服务端日志和 AI 日志不保存完整敏感文本。
+- DemoCache 改为任务、Prompt 版本、输入哈希精确命中；缓存未命中不再冒用其他演示案例。
+- sourceSpan 改为模型返回 sourceQuote、程序定位字符位置；无法定位的内容保留低置信度和待确认。
+- Profile 页面实现 B1：原文保存、隐私确认、AI解析/手动模式、事实确认、事务提交正式母档案。
+- Jobs 页面实现 B2：原始JD保存、隐私确认、AI解析/手动模式、要求确认、删除影响提示、事务提交正式岗位数据。
+- AI 日志改为元数据记录：任务、Provider、模型、Prompt版本、输入哈希、长度、延迟、状态和错误码。
+- 新增 `pnpm test:ai:real` 本地可选命令，不加入 `pnpm verify`。
+
+验证结果：
+- `pnpm typecheck` 通过。
+- `pnpm lint` 通过。
+- `pnpm test` 通过：3 个测试文件，19 个测试通过。
+- `pnpm build` 通过，包含 `/api/ai/structured` 动态路由构建。
+
+遗留问题：
+- 真实外部模型尚未联调：当前环境未配置 `AI_API_KEY` / `AI_MODEL`，阶段B工程实现完成，但真实模型验收必须在 `Plan.md` 中保持 `[!]`，进入阶段C前不得忽略。
+- 阶段B仅实现确认/删除闭环；经历复制/排序、要求合并、完整富编辑体验留作后续增强。
+- PDF导入、经历匹配、AI建议、Fact Guard建议卡片、岗位分支、正式模板和PDF导出仍未进入本阶段。
+
+下一步：
+1. 本地配置真实模型环境变量后，使用脱敏测试样本运行 `pnpm test:ai:real`。
+2. 人工在页面分别跑通一次 Profile Builder 和 JD Analyzer，并记录模型、时间、结果和错误码状态。
+3. 真实模型联调完成后，再进入阶段C：经历匹配、AI建议与 Fact Guard。
