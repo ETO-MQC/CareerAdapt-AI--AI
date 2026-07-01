@@ -21,7 +21,7 @@
 ## 当前进度
 
 - [x] 项目开发协作文档初始化：创建 `Plan.md`、`history.md`、`Claude.md`。
-- [ ] Sprint 0：工程初始化、数据 Schema、示例数据、页面骨架。
+- [x] Sprint 0：工程初始化、数据 Schema、示例数据、页面骨架。
 
 ## MVP交付标准
 
@@ -95,26 +95,26 @@
 
 ## Sprint 0：工程与数据底座
 
-状态：`[ ]`
+状态：`[x]`
 
 目标：让项目能运行，核心数据结构能序列化，示例档案能在页面中显示，并完成 AI、事实来源和 PDF 导出的最小技术验证。
 
 任务清单：
 
-- [ ] 确认应用形态：优先 Web MVP；Tauri、本地优先能力后置评估。
-- [ ] 确认技术栈：建议 React/Next.js 或 Vite React + TypeScript；本地存储优先。
-- [ ] 建立目录结构：`components`、`domain`、`ai`、`services`、`tests`。
-- [ ] 定义核心 Schema：`CareerProfile`、`Experience`、`Evidence`、`JobDescription`、`JobRequirement`、`RequirementMatch`、`ResumeBranch`、`AiSuggestion`、`ResumeRevision`。
-- [ ] 定义事实来源结构 `FactProvenance`：`sourceType`、`sourceId`、`sourceText`、`confidence`、`confirmedByUser`、`riskLevel`、`createdAt`。
-- [ ] 明确所有可能进入最终简历的事实必须具有来源、确认状态和风险状态。
-- [ ] 建立统一 AI Service：`AiProvider`、结构化输出、Prompt 版本、Schema 校验、一次自动修复/重试、失败降级、请求日志、演示缓存。
-- [ ] 建立 Mock AI Provider 和演示缓存 Provider，保证无 API 时可演示主链路。
-- [ ] 准备脱敏示例数据：1 份学生母档案、2 份岗位 JD。
-- [ ] 示例数据从第一天固定为比赛案例：数据分析实习 JD、外贸/跨境运营实习 JD。
-- [ ] 搭建页面骨架：首页/项目空间、职业母档案、岗位工作区、简历工作台、模板导出。
-- [ ] 建立基础持久化接口：保存、读取、更新、导出 JSON；MVP 默认使用 IndexedDB/Dexie。
-- [ ] 完成最小 PDF 技术探针：静态示例数据 -> A4 HTML 简历 -> 浏览器打印导出 PDF，验证中文字体、单页尺寸和文本可复制。
-- [ ] 建立最小验证：Schema 校验、示例数据加载、空状态显示。
+- [x] 确认应用形态：优先 Web MVP；Tauri、本地优先能力后置评估。
+- [x] 确认技术栈：建议 React/Next.js 或 Vite React + TypeScript；本地存储优先。
+- [x] 建立目录结构：`components`、`domain`、`ai`、`services`、`tests`。
+- [x] 定义核心 Schema：`CareerProfile`、`Experience`、`Evidence`、`JobDescription`、`JobRequirement`、`RequirementMatch`、`ResumeBranch`、`AiSuggestion`、`ResumeRevision`。
+- [x] 定义事实来源结构 `FactProvenance`：`sourceType`、`sourceId`、`sourceText`、`confidence`、`confirmedByUser`、`riskLevel`、`createdAt`。
+- [x] 明确所有可能进入最终简历的事实必须具有来源、确认状态和风险状态。
+- [x] 建立统一 AI Service：`AiProvider`、结构化输出、Prompt 版本、Schema 校验、一次自动修复/重试、失败降级、请求日志、演示缓存。
+- [x] 建立 Mock AI Provider 和演示缓存 Provider，保证无 API 时可演示主链路。
+- [x] 准备脱敏示例数据：1 份学生母档案、2 份岗位 JD。
+- [x] 示例数据从第一天固定为比赛案例：数据分析实习 JD、外贸/跨境运营实习 JD。
+- [x] 搭建页面骨架：首页/项目空间、职业母档案、岗位工作区、简历工作台、模板导出。
+- [x] 建立基础持久化接口：保存、读取、更新、导出 JSON；MVP 默认使用 IndexedDB/Dexie。
+- [x] 完成最小 PDF 技术探针：静态示例数据 -> A4 HTML 简历 -> 浏览器打印导出 PDF，验证中文字体、单页尺寸和文本可复制。
+- [x] 建立最小验证：Schema 校验、示例数据加载、空状态显示。
 
 完成定义：
 
@@ -316,24 +316,22 @@
 
 ## 技术与产品决策记录
 
-- [~] 首版应用形态：默认 Web MVP；Tauri 不进入当前 MVP。
-- [~] 推荐技术栈：Next.js + TypeScript + Tailwind CSS + shadcn/ui + Zod + Zustand + Dexie/IndexedDB。
-- [~] 数据库存储：MVP 默认 IndexedDB，使用 Dexie 封装；暂不引入账号、云同步和 PostgreSQL。
-- [~] PDF 导出方案：默认 A4 打印 CSS + 浏览器打印导出 PDF；Puppeteer/Playwright 服务端导出后置。
-- [~] 模型方案：只接一个主模型，但必须保留 `AiProvider`、Mock 实现和演示缓存实现。
+- [x] 首版应用形态：默认 Web MVP；Tauri 不进入当前 MVP。
+- [x] 推荐技术栈：Next.js + TypeScript + Tailwind CSS + Zod + Zustand + Dexie/IndexedDB。
+- [x] 数据库存储：MVP 默认 IndexedDB，使用 Dexie 封装；暂不引入账号、云同步和 PostgreSQL。
+- [x] PDF 导出方案：默认 A4 打印 CSS + 浏览器打印导出 PDF；Puppeteer/Playwright 服务端导出后置。
+- [x] 模型方案：阶段A 使用 `AiProvider`、Mock 实现和演示缓存实现，暂不接真实模型。
 - [>] Embedding/向量数据库：当前后置。
 - [ ] 主模型与备用模型：待确认。
-- [ ] API 密钥管理：只能使用服务端或本地环境变量，不得进入前端代码或仓库。
-- [ ] 是否开放注册：MVP 建议本地工作区或匿名体验。
+- [x] API 密钥管理：阶段A 未接入真实 API，未向前端代码或仓库写入任何密钥。
+- [x] 是否开放注册：阶段A 使用本地匿名体验，不开放注册。
 - [>] DOCX 是否进入 P0：当前后置。
 
 ## 下次开发路线
 
-下一步进入阶段A / Sprint 0：
+下一步进入阶段B：职业母档案与 JD 解析。
 
-1. 确认技术栈和应用形态。
-2. 初始化工程。
-3. 冻结核心 Schema、`FactProvenance` 和 AI Service 接口。
-4. 准备脱敏示例母档案和两个岗位 JD。
-5. 搭建页面骨架和 IndexedDB 持久化雏形。
-6. 完成静态 A4 简历 PDF 导出技术探针。
+1. 实现“粘贴简历文本 -> 生成母档案草稿 -> 用户校对 -> 保存母档案”的核心路径。
+2. 保持 PDF 导入后置，不阻塞粘贴文本主链路。
+3. 接入 JD 粘贴与结构化要求输出，继续沿用阶段A的 Schema、AI Service 和 IndexedDB 底座。
+4. 仍不进入经历匹配、AI建议卡片、岗位分支正式业务和两套模板开发。
