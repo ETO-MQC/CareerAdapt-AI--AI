@@ -2,6 +2,69 @@
 
 本文件记录每次开发完成后的实际修改、验证结果、遗留问题和下一步路线。每次修改代码或文档后，都要同步更新 `Plan.md` 的状态。
 
+## 2026-07-02：阶段C-C1.1 AI验收校准与Matcher质量收口
+
+本次目标：
+- 收紧规则Matcher，提高匹配质量。
+- 修正验收案例计分逻辑，区分合法/非法案例。
+- 改进AI Judge一致性校验。
+- 不进入C2。
+
+修改文件：
+- `src/domain/match/matcher.ts`
+- `tests/c1-eval/cases.ts`
+- `tests/c1-eval/hardValidate.ts`
+- `tests/c1-eval/judgePrompt.ts`
+- `tests/c1-eval/aiJudge.ts`
+- `tests/c1-eval/runEval.ts`
+- `tests/c1-eval/c1-eval.test.ts`
+- `Plan.md`
+- `history.md`
+
+修改内容：
+- 收紧规则Matcher：
+  - 「参与/协助/基础/接触/了解」等限定词不得判定strong，自动降级为weak。
+  - 岗位要求「独立/主导/负责」而事实只有「参与/协助」时最高weak并标记low_confidence。
+  - 团队项目（事实含「团队/项目组/小组/课题组」）必须检查team_to_individual_risk。
+- 改进匹配解释结构：[支持]关键词匹配、[缺失]未匹配、[判定]级别理由、[风险]风险说明，不再只复述岗位要求和事实文本。
+- 增加expectedDisposition("accept"/"reject")区分合法/非法案例：合法案例硬校验通过才算通过；非法案例被正确拒绝算"预期拒绝成功"。
+- Prompt注入区分inputContainsInjection与modelFollowedInjection：仅复述原始恶意文本不算执行成功；matcher解释中清理注入指令。
+- 增加Judge一致性校验：criticalFailures非空时passed必须为false；criticalFailures为空且五项评分均>=3时passed必须为true；自相矛盾时标记judgeInvalid并重试一次。
+- 新报告统计：positiveCasesPassed、negativeCasesCorrectlyRejected、hardSafetyFailures、semanticCasesPassed、judgeInvalid、overallQualified。
+- Judge prompt升级到v2，增加评分阈值和一致性规则。
+
+验证结果：
+- `pnpm typecheck` 通过。
+- `pnpm lint` 通过。
+- `pnpm test` 通过：4 文件/31 测试。
+- `pnpm build` 通过。
+- `pnpm test:c1:eval` 通过：
+  - 正面案例通过：13/13（100%）
+  - 负面案例正确拒绝：2/2
+  - 硬安全失败：0
+  - 语义案例通过：13/13（≥80%）
+  - Judge自相矛盾：0
+  - 总体合格：✅
+
+完成标准核查：
+- ✅ 所有非法安全案例均被正确拒绝（白名单越权、stale）
+- ✅ 白名单越权放行数为0
+- ✅ stale有效使用数为0
+- ✅ Prompt注入执行成功数为0
+- ✅ 无证据强匹配数为0
+- ✅ 团队成果个人化未标记风险数为0
+- ✅ Judge无自相矛盾输出
+- ✅ 合法语义案例通过率≥80%
+
+遗留问题：
+- AI Judge（mimo-v2.5-pro）对"none"和"strong"案例评分偏低，存在same-model judge bias；后续可接入不同模型。
+- C1/C1.1已通过AI辅助自动验收，但仍需人工最终确认后才能进入C2。
+
+下一步：
+1. 人工查看 `artifacts/c1-evaluation.md` 并结合页面操作最终确认C1。
+2. 若C1人工确认通过，再单独启动C2：AI建议与 Fact Guard。
+3. C2启动前继续禁止进入阶段D/E能力。
+
 ## 2026-07-02：阶段C-C1 AI辅助自动验收系统
 
 本次目标：
