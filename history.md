@@ -2,6 +2,75 @@
 
 本文件记录每次开发完成后的实际修改、验证结果、遗留问题和下一步路线。每次修改代码或文档后，都要同步更新 `Plan.md` 的状态。
 
+## 2026-07-02：阶段C-C1 Evidence Matcher 与差距诊断
+
+本次目标：
+- 只完成阶段C的 C1 检查点：岗位要求到已确认经历事实的证据映射、差距诊断、AI解释、人工覆盖、stale 判定和持久化。
+- C1 完成后立即停止，等待人工验收；不进入 C2 的 AI建议、Fact Guard、JobAdaptationDraft、ResumeBranch、模板或PDF导出。
+
+修改文件：
+- `Plan.md`
+- `history.md`
+- `src/domain/schemas/job.ts`
+- `src/domain/match/matcher.ts`（新增）
+- `src/ai/prompts/evidenceMatcher.ts`（新增）
+- `src/ai/tasks/registry.ts`
+- `src/ai/client.ts`
+- `src/app/api/ai/structured/route.ts`
+- `src/services/storage/db.ts`
+- `src/services/storage/repositories.ts`
+- `src/app/jobs/JobsWorkspace.tsx`
+- `src/app/globals.css`
+- `tests/unit/matcher.test.ts`（新增）
+- `tests/unit/storage.test.ts`
+- `tests/ai-real/stageCRealProvider.test.ts`（新增）
+- `tests/e2e/stageCFlow.spec.ts`（新增）
+
+修改内容：
+- 重构 `RequirementMatch`：将 `matchLevel`（strong/weak/transferable/none）与 `riskLevel`（low/medium/high）分离，风险使用 `MatchRisk[]` 独立记录。
+- 将 `evidenceRefs` 改为判别联合类型：`experience_fact`、`skill_fact`、`certificate_fact`、`evidence_file`；所有引用通过正式母档案白名单和关联完整性校验。
+- 新增 `ruleEvaluation`、`aiEvaluation`、`manualOverride` 分层保存，并通过 `resolveEffectiveMatch` 统一计算有效结果；页面不直接编辑 `effectiveEvaluation`。
+- 新增 C1 规则匹配：只召回正式 `CareerProfile` 中已确认事实，不使用未绑定事实的 `resumeDraft/customText`。
+- 新增规范化 `candidateSetHash` 和 stale 判定：基于 `profileVersion`、`jobVersion`、`matcherVersion`、岗位要求与固定排序后的候选事实计算。
+- 新增 `evidence-matcher` 服务端白名单任务与 Prompt，Prompt 明确将简历、岗位和事实文本视为不可信数据，忽略其中的 Prompt 注入。
+- AI 任务只接收规则层候选事实片段，不接收完整职业母档案；Zod 校验后继续做业务语义校验，拒绝白名单外 ID。
+- Dexie 升级到 v3，新增 `requirementMatches` 和 `matchOperations` 表；Repository 增加规则匹配保存、AI匹配保存、人工覆盖、stale 标记和有效结果解析方法。
+- 岗位页新增 C1 匹配诊断区域：运行规则匹配、运行AI解释、查看岗位原文/事实依据/匹配等级/风险等级、保存人工覆盖、展示 stale。
+- 真实模型联调中补强阶段B/C1 coerce 层：JD Analyzer 对缺失 description/sourceQuote、纯字符串 location 等模型差异做兜底；Evidence Matcher 对空 evaluations、风险枚举和证据引用做规范化。
+
+验证结果：
+- `pnpm typecheck` 通过。
+- `pnpm lint` 通过。
+- `pnpm test` 通过：4 个测试文件，31 个测试通过。
+- `pnpm build` 通过。
+- `pnpm test:e2e` 通过：7 个 Playwright 测试通过，其中包含 C1 规则匹配、AI解释、人工覆盖、刷新恢复和 stale 展示。
+- `pnpm test:ai:real` 通过：2 个真实模型测试文件，5 个测试通过（health check、profile-builder、jd-analyzer、evidence-matcher）。
+
+真实模型与 Provider：
+- Provider: openai-compatible（通过 `.env.local` 当前配置）
+- Model: 使用当前 `AI_MODEL` 环境变量。
+- C1 覆盖：`evidence-matcher` 输出通过 Zod 与业务语义校验，不引用白名单外 ID，不输出总分；候选集合为空时归一化为 `matchLevel: none`。
+
+人工验收入口：
+1. 打开 `/jobs`。
+2. 在“C1 经历匹配与差距诊断”区域点击“运行C1规则匹配”。
+3. 点击“运行AI解释”。
+4. 检查每条岗位要求的岗位原文、事实依据、匹配等级、风险等级和解释。
+5. 对一条非 none 匹配保存人工覆盖并选择正式事实；对一条 none 匹配填写说明后保存。
+6. 刷新页面确认匹配和人工覆盖可恢复。
+7. 修改母档案版本或候选事实后确认旧匹配显示 stale。
+
+遗留问题：
+- C1 已完成但尚未人工验收；C2 必须等待人工确认后再启动。
+- 当前 C1 页面默认使用 workspace 中第一份正式母档案和第一份正式岗位，后续 C2/D 可再扩展岗位选择体验。
+- 未实现 AI建议、Fact Guard、JobAdaptationDraft、正式 ResumeBranch、正式模板、PDF导出、PDF导入或求职材料生成。
+- 未覆盖职业母档案事实层，未写入 API 密钥，未进行批量删除或破坏性 Git 操作。
+
+下一步：
+1. 人工验收 C1。
+2. 若 C1 验收通过，再单独启动 C2：AI建议与 Fact Guard。
+3. C2 启动前继续禁止进入阶段D/E能力。
+
 ## 2026-07-01：阶段A.1 阶段A收口与端到端集成修复
 
 本次目标：

@@ -26,6 +26,7 @@
 - [x] 阶段B：职业母档案与 JD 解析工程实现。
 - [x] 阶段B验收收口：真实模型联调通过（mimo-v2.5-pro via openai-compatible）、E2E 覆盖页面流程、幂等提交、revision 冲突、手动降级；coerce 层处理模型字段名差异；所有验证命令通过。
 - [x] 阶段B.3真实模型联调完成：3/3 项测试通过（health check、profile-builder、jd-analyzer），Provider mimo-v2.5-pro，Schema coerce 层处理字段名差异。
+- [x] 阶段C-C1：Evidence Matcher 与差距诊断完成；规则匹配、AI解释、人工覆盖、stale 判定、Dexie v3 持久化和迁移测试已覆盖；等待人工验收后才能进入 C2。
 
 ## MVP交付标准
 
@@ -83,6 +84,11 @@
 目标：打通“岗位要求 -> 匹配用户经历 -> 显示满足/部分满足/无证据 -> 生成可解释建议 -> 检测新增事实 -> 用户接受或拒绝”。
 
 对应任务：Sprint 4、Sprint 5。向量检索后置，MVP 默认规则筛选 + 关键词匹配 + 大模型解释。
+
+内部检查点：
+
+- [x] C1 Evidence Matcher 与差距诊断：仅使用正式 CareerProfile 中已确认事实；匹配等级与风险等级分离；规则评估、AI评估、人工覆盖分层保存；统一通过 `resolveEffectiveMatch` 计算有效结果；旧匹配可按 profileVersion、jobVersion、matcherVersion、candidateSetHash 判定 stale。
+- [ ] C2 AI建议与 Fact Guard：等待 C1 人工验收后启动；不得在 C1 完成后自动进入。
 
 ### 阶段D：岗位分支、模板和导出
 
@@ -206,18 +212,19 @@
 
 ## Sprint 4：Evidence Matcher 与差距诊断
 
-状态：`[ ]`
+状态：`[x]`
 
 目标：将岗位要求与真实经历建立证据映射，显示满足、部分满足、无证据和风险。
 
 任务清单：
 
-- [ ] 定义匹配状态：强匹配、弱匹配、可迁移、无证据、风险。
-- [ ] 实现基础规则匹配：技能、关键词、经历类型、时间、岗位方向。
+- [x] 定义匹配等级和风险等级：`matchLevel` 为 strong/weak/transferable/none，`riskLevel` 为 low/medium/high，风险用 `MatchRisk[]` 独立记录。
+- [x] 实现基础规则匹配：技能、关键词、经历类型、岗位方向；只召回正式母档案中已确认事实。
 - [>] 预留可替换的语义检索接口；MVP 不建设向量数据库，默认使用规则筛选、关键词匹配和大模型解释。
-- [ ] 生成匹配解释：岗位依据、经历依据、证据片段。
-- [ ] 标记差距和可补充信息。
-- [ ] 保存 `RequirementMatch`。
+- [x] 生成匹配解释：岗位依据、经历事实依据、证据片段。
+- [x] 标记差距、风险和无证据状态。
+- [x] 保存 `RequirementMatch`，并保存规则评估、AI评估、人工覆盖和操作日志。
+- [x] 实现 stale 判定：基于 profileVersion、jobVersion、matcherVersion、规范化 candidateSetHash 实时计算。
 
 完成定义：
 
@@ -343,9 +350,9 @@
 
 ## 下次开发路线
 
-阶段B核心路径已完成，阶段B验收收口完成。
+阶段C-C1 已完成，等待人工验收。
 
-1. 若本地具备 `AI_API_KEY` + `AI_MODEL`，运行 `pnpm test:ai:real` 完成真实模型联调并记录结果到 `history.md`。
-2. 真实模型联调通过后进入阶段C：经历匹配、AI建议与 Fact Guard。
-3. 仍不进入 PDF 导入、正式模板扩展、正式PDF导出和登录/云端能力。
-4. 阶段B后置的"经历复制/排序""要求合并""完整富编辑""事实原文与表达稿区分"留作后续增强，不阻塞阶段C核心路径。
+1. 人工验收 C1：在岗位页运行“C1 经历匹配与差距诊断”，检查规则匹配、AI解释、人工覆盖、刷新恢复和 stale 提示。
+2. 人工确认 C1 通过后，才能进入 C2：AI建议与 Fact Guard。
+3. C2 启动前不得实现建议卡片、Fact Guard 接受流程、JobAdaptationDraft、ResumeBranch、正式模板、PDF导出、PDF导入或求职材料生成。
+4. 仍不进入登录/云端能力，不写入 API 密钥，不覆盖职业母档案事实层。
