@@ -28,7 +28,8 @@
 - [x] 阶段B.3真实模型联调完成：3/3 项测试通过（health check、profile-builder、jd-analyzer），Provider mimo-v2.5-pro，Schema coerce 层处理字段名差异。
 - [x] 阶段C-C1：Evidence Matcher 与差距诊断完成；规则匹配、AI解释、人工覆盖、stale 判定、Dexie v3 持久化和迁移测试已覆盖。
 - [x] 阶段C-C2：AI建议与 Fact Guard 完成；JobAdaptationDraft、resume-tailor、规则 Fact Guard、AI fact-guard、单条接受/拒绝/编辑/重新检测/撤销、Dexie v4 事务与迁移测试已覆盖。
-- [x] 阶段D-D1：正式 ResumeBranch、版本历史与多岗位分支完成；未 stale 的 JobAdaptationDraft 可创建 verified 分支并同事务创建首个 ResumeRevision，支持两个岗位分支独立编辑、版本历史、恢复/撤销、syncStatus 更新提示和 legacy_unverified 只读迁移；模板、PDF 预览/导出、PDF 导入、求职材料、登录/云同步仍未开始。
+- [x] 阶段D-D1：正式 ResumeBranch、版本历史与多岗位分支完成；未 stale 的 JobAdaptationDraft 可创建 verified 分支并同事务创建首个 ResumeRevision，支持两个岗位分支独立编辑、版本历史、恢复/撤销、syncStatus 更新提示和 legacy_unverified 只读迁移。
+- [x] 阶段D-D2：双模板预览、单页检查与 PDF 导出完成；verified 分支经 ResumeRenderModel 渲染模板A/模板B，支持 A4 实时预览、fits/near_limit/overflow 检测、模板偏好恢复、浏览器打印导出、ExportRecord 幂等记录和 PDF 产物验证；legacy_unverified 不进入正式预览或导出。
 
 ## MVP交付标准
 
@@ -104,7 +105,7 @@
 内部检查点：
 
 - [x] D1 正式 ResumeBranch、版本历史与多岗位分支：只允许未 stale、非 error 的 `JobAdaptationDraft` 创建 verified 分支；分支只持久化正式事实引用 `factRefs`，不复制 CareerProfile 正式事实层；创建分支与首个 `ResumeRevision` 在同一 Dexie v5 事务中完成；写操作使用 `expectedRevision` + `operationId` 幂等保护；手动文本编辑由 Repository 基于正式 factRefs 重新运行规则 Fact Guard；`ai_failed_rule_kept` 在规则通过且无 high finding 时以 `rule_only_verified` 进入分支并提示未完成 AI 复核；旧占位分支迁移为 `legacy_unverified` 只读保留；恢复/撤销通过不可变追加 revision 链完成，`syncStatusCache` 为派生缓存且不进入 snapshot。
-- [ ] D2 模板预览与 PDF 导出：尚未开始。
+- [x] D2 模板预览与 PDF 导出：正式 verified `ResumeBranch` 先映射为统一 `ResumeRenderModel`，模板 A/B 只消费 RenderModel；`legacy_unverified`、归档分支、失效引用和 overflow 均阻止正式导出；模板偏好保存在展示配置中，不创建内容 `ResumeRevision`；Dexie v6 `ExportRecord` 记录 `operationId/branchRevision/templateId/exportStatus/overflowStatus/exportedAt` 并按 operationId 幂等；E2E 生成并验证两套模板 PDF 为 A4 单页、中文文本可抽取、无导航按钮。
 
 ### 阶段E：PDF导入、稳定性和比赛材料
 
@@ -178,7 +179,7 @@
 
 ## Sprint 2：PDF文本提取与 Profile Builder
 
-状态：`[ ]`
+状态：`[x]`
 
 目标：支持文本型 PDF 导入，并生成可校对的结构化 JSON。
 
@@ -297,13 +298,13 @@
 
 任务清单：
 
-- [ ] 建立模板渲染数据接口。
-- [ ] 实现模板 A：稳重清晰，适合数据/技术/研究类岗位。
-- [ ] 实现模板 B：简洁表达，适合运营/产品/综合类岗位。
-- [ ] 实现实时预览和模板切换。
-- [ ] 实现分页检查、内容溢出提示和删减建议。
-- [ ] 实现 PDF 导出，保留当前版本和导出记录。
-- [ ] 导出失败时保留状态并展示原因。
+- [x] 建立模板渲染数据接口。
+- [x] 实现模板 A：稳重清晰，适合数据/技术/研究类岗位。
+- [x] 实现模板 B：简洁表达，适合运营/产品/综合类岗位。
+- [x] 实现实时预览和模板切换。
+- [x] 实现分页检查、内容溢出提示和删减建议。
+- [x] 实现 PDF 导出，保留当前版本和导出记录。
+- [x] 导出失败时保留状态并展示原因。
 
 完成定义：
 
@@ -363,9 +364,8 @@
 
 ## 下次开发路线
 
-阶段D-D1 已完成，等待人工验收后再决定是否进入 D2/Sprint 7。模板、PDF 预览/导出、PDF 导入、求职材料、登录/云同步均未开始。
+阶段D-D2 已完成，阶段D闭环达到“岗位分支 -> 双模板预览 -> 单页检查 -> 浏览器打印 PDF -> ExportRecord”的 MVP 目标。D2 完成后停止，尚未进入阶段E。
 
-1. 人工验收 D1：在 `/jobs` 为两个不同岗位分别运行 C1/C2，在 `/resume` 从 C2 草稿创建两个正式分支，验证独立编辑、版本历史、恢复、撤销、syncStatus 提示和 `legacy_unverified` 只读行为。
+1. 人工验收 D2：在 `/jobs` 创建 C2 草稿，在 `/resume` 创建 verified 分支，切换模板 A/B，检查 `fits/near_limit/overflow` 状态，导出 PDF 并确认文本可复制。
 2. 复核 `artifacts/c1-evaluation.md` 与 `artifacts/c2-evaluation.md`，确认 C1/C2 回归仍通过，C2 指标保持 safeAllowed 6 / safeBlocked 0 / unsafeBlocked 10 / unsafeAllowed 0。
-3. D1 人工确认通过后，再单独启动 D2/Sprint 7：模板预览与 PDF 导出。
-4. 进入 D2 前仍不实现 PDF 导入、求职材料、登录/云端能力，不写入 API 密钥，不覆盖 CareerProfile 正式事实层。
+3. 若继续开发，单独启动阶段E：PDF导入、稳定性和比赛材料；仍不实现 DOCX、OCR、登录、云同步、更多模板或付费能力。

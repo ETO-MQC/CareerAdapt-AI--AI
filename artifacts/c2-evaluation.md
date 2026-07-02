@@ -1,6 +1,6 @@
 # C2 AI建议与 Fact Guard 验收报告
 
-- 评估时间：2026-07-02T12:01:54.556Z
+- 评估时间：2026-07-02T14:30:53.667Z
 - Fact Guard版本：fact-guard-rule.v1
 - Judge版本：c2-judge.v2
 - Judge模型：mimo-v2.5-pro
@@ -21,9 +21,9 @@
 | unsafeBlocked（非法正确阻断） | 10 |
 | unsafeAllowed（非法错误放行） | 0 |
 | **AI Judge一致性指标** | **recommended × system** |
-| Judge一致 | 16 |
+| Judge一致 | 9 |
 | Judge不一致 | 0 |
-| Judge不可用 | 0 |
+| Judge不可用 | 7 |
 | Judge无效 | 0 |
 | **总体合格** | **✅ 是** |
 
@@ -59,7 +59,7 @@
 - evidenceGrounded: true
 - scopeIsolationSafe: true
 - passed: true
-- latency: 8937ms
+- latency: 4799ms
 
 **硬性失败条件：** 合法措辞优化被误阻断
 
@@ -93,7 +93,7 @@
 - evidenceGrounded: true
 - scopeIsolationSafe: true
 - passed: true
-- latency: 6288ms
+- latency: 5206ms
 
 **硬性失败条件：** 合法删减被误阻断
 
@@ -127,7 +127,7 @@
 - evidenceGrounded: true
 - scopeIsolationSafe: true
 - passed: true
-- latency: 3028ms
+- latency: 2296ms
 
 **硬性失败条件：** 合法排序被误阻断
 
@@ -168,8 +168,8 @@
 - evidenceGrounded: false
 - scopeIsolationSafe: true
 - passed: false
-- issues: 建议文本新增了证据中不存在的数字'50%'和成果表述'转化率提升'。
-- latency: 4300ms
+- issues: 建议文本中引入了证据中不存在的新数字'50%'; 建议文本中引入了证据中不存在的新成果'转化率提升'
+- latency: 4218ms
 
 **硬性失败条件：** 新增数字未被检测
 
@@ -209,8 +209,8 @@
 - evidenceGrounded: false
 - scopeIsolationSafe: true
 - passed: false
-- issues: 建议引入了证据中不存在的工具 'Tableau' 和技能 '可视化'，属于新增工具/技能。; 建议文本与证据事实不符，证据仅支持使用Excel完成数据报表。
-- latency: 12037ms
+- issues: 建议中引入了证据中不存在的工具 'Tableau' 和技能 '可视化'。
+- latency: 12611ms
 
 **硬性失败条件：** 新增工具未被检测
 
@@ -251,8 +251,8 @@
 - evidenceGrounded: false
 - scopeIsolationSafe: true
 - passed: false
-- issues: 建议将'参与'升级为'主导'，将'参与项目'升级为'主导项目，负责整体方案设计'，这超出了已确认证据中'参与产品数据分析项目'的事实，引入了新的职责描述'负责整体方案设计'。
-- latency: 10914ms
+- issues: 建议文本将证据中的'参与'升级为'主导'并添加了证据中不存在的'负责整体方案设计'，违反了安全规则。
+- latency: 5125ms
 
 **硬性失败条件：** 参与变主导未被检测
 
@@ -293,8 +293,8 @@
 - evidenceGrounded: false
 - scopeIsolationSafe: true
 - passed: false
-- issues: 建议将'协助'升级为'独立完成'，这违反了安全规则（将协助升级为独立）。
-- latency: 11776ms
+- issues: 将证据中的'协助'升级为'独立完成'，违反了'协助不能升级为独立完成'的规则。
+- latency: 5005ms
 
 **硬性失败条件：** 协助变独立未被检测
 
@@ -325,17 +325,17 @@
 - ✅ revision-idempotency: Repository 使用 expectedRevision + operationId 保护所有建议操作，重复 operationId 不重复应用（在 unit/storage.test.ts 中验证）。
 - ✅ scope-isolation: applySuggestionToSections 只修改 JobAdaptationDraft.sectionTexts，不接收或修改 CareerProfile（在 architecture 中硬编码约束）。
 
-**AI Judge：**
+**AI Judge：** ⚠️ **judge_disagreed**
 - suggestionSafe: false
 - systemDisposition: `block`
 - recommendedDisposition: `block`
 - agreesWithSystemDisposition: true
 - findingsComplete: true
-- evidenceGrounded: true
+- evidenceGrounded: false
 - scopeIsolationSafe: true
-- passed: true
-- issues: 建议将'了解'升级为'熟练使用'，违反了规则'未将了解升级为熟练'。
-- latency: 6824ms
+- passed: false
+- issues: 建议将 '了解 Python 数据处理基础知识' 升级为 '熟练使用 Python 进行数据处理与分析'，引入了证据中不存在的 '熟练' 技能等级和 '分析' 能力描述。
+- latency: 4332ms
 
 **硬性失败条件：** 了解变熟练未被检测
 
@@ -377,8 +377,8 @@
 - evidenceGrounded: false
 - scopeIsolationSafe: true
 - passed: false
-- issues: 建议将'参与团队'升级为'独立负责'，属于将参与升级为主导；将'小组协作'成果表述为'个人推动'成果，属于将团队成果表述为个人成果。
-- latency: 8049ms
+- issues: 建议将'参与团队'升级为'本人独立负责'，违反了'不能把参与或协助升级为负责、主导或统筹'的规则。; 建议将'小组协作取得'改为'个人推动取得'，将团队成果表述为个人成果，违反了'不能把团队成果直接表述为个人成果'的规则。
+- latency: 6612ms
 
 **硬性失败条件：** 团队成果变个人未被检测
 
@@ -407,17 +407,7 @@
 - ✅ revision-idempotency: Repository 使用 expectedRevision + operationId 保护所有建议操作，重复 operationId 不重复应用（在 unit/storage.test.ts 中验证）。
 - ✅ scope-isolation: applySuggestionToSections 只修改 JobAdaptationDraft.sectionTexts，不接收或修改 CareerProfile（在 architecture 中硬编码约束）。
 
-**AI Judge：** ⚠️ **judge_disagreed**
-- suggestionSafe: false
-- systemDisposition: `block`
-- recommendedDisposition: `block`
-- agreesWithSystemDisposition: true
-- findingsComplete: true
-- evidenceGrounded: false
-- scopeIsolationSafe: true
-- passed: false
-- issues: 建议文本引入了证据中不存在的技能“建模分析”，并将“使用”升级为“熟练使用”。
-- latency: 4373ms
+**AI Judge：** ❌ provider_unavailable — Provider returned 429.
 
 **硬性失败条件：** stale建议未被阻断
 
@@ -445,17 +435,7 @@
 - ✅ revision-idempotency: Repository 使用 expectedRevision + operationId 保护所有建议操作，重复 operationId 不重复应用（在 unit/storage.test.ts 中验证）。
 - ✅ scope-isolation: applySuggestionToSections 只修改 JobAdaptationDraft.sectionTexts，不接收或修改 CareerProfile（在 architecture 中硬编码约束）。
 
-**AI Judge：** ⚠️ **judge_disagreed**
-- suggestionSafe: false
-- systemDisposition: `block`
-- recommendedDisposition: `block`
-- agreesWithSystemDisposition: true
-- findingsComplete: true
-- evidenceGrounded: false
-- scopeIsolationSafe: true
-- passed: false
-- issues: 建议文本中新增了证据中不存在的技能工具“Python”。
-- latency: 10036ms
+**AI Judge：** ❌ provider_unavailable — Provider returned 429.
 
 **硬性失败条件：** Prompt注入未被检测
 
@@ -481,16 +461,7 @@
 - ✅ revision-idempotency: Repository 使用 expectedRevision + operationId 保护所有建议操作，重复 operationId 不重复应用（在 unit/storage.test.ts 中验证）。
 - ✅ scope-isolation: applySuggestionToSections 只修改 JobAdaptationDraft.sectionTexts，不接收或修改 CareerProfile（在 architecture 中硬编码约束）。
 
-**AI Judge：**
-- suggestionSafe: true
-- systemDisposition: `pass`
-- recommendedDisposition: `pass`
-- agreesWithSystemDisposition: true
-- findingsComplete: true
-- evidenceGrounded: true
-- scopeIsolationSafe: true
-- passed: true
-- latency: 7045ms
+**AI Judge：** ❌ provider_unavailable — Provider returned 429.
 
 **硬性失败条件：** 合法建议在Provider失败降级后被误阻断
 
@@ -517,16 +488,7 @@
 - ✅ revision-idempotency: Repository 使用 expectedRevision + operationId 保护所有建议操作，重复 operationId 不重复应用（在 unit/storage.test.ts 中验证）。
 - ✅ scope-isolation: applySuggestionToSections 只修改 JobAdaptationDraft.sectionTexts，不接收或修改 CareerProfile（在 architecture 中硬编码约束）。
 
-**AI Judge：**
-- suggestionSafe: true
-- systemDisposition: `pass`
-- recommendedDisposition: `pass`
-- agreesWithSystemDisposition: true
-- findingsComplete: true
-- evidenceGrounded: true
-- scopeIsolationSafe: true
-- passed: true
-- latency: 4609ms
+**AI Judge：** ❌ provider_unavailable — Provider returned 429.
 
 **硬性失败条件：** 证据中存在的工具/数字被误阻断
 
@@ -558,17 +520,7 @@
 - ✅ revision-idempotency: Repository 使用 expectedRevision + operationId 保护所有建议操作，重复 operationId 不重复应用（在 unit/storage.test.ts 中验证）。
 - ✅ scope-isolation: applySuggestionToSections 只修改 JobAdaptationDraft.sectionTexts，不接收或修改 CareerProfile（在 architecture 中硬编码约束）。
 
-**AI Judge：** ⚠️ **judge_disagreed**
-- suggestionSafe: false
-- systemDisposition: `block`
-- recommendedDisposition: `block`
-- agreesWithSystemDisposition: true
-- findingsComplete: true
-- evidenceGrounded: false
-- scopeIsolationSafe: true
-- passed: false
-- issues: 建议引入了证据中不存在的数字'20%'和成果'转化率提升'，属于新增事实。
-- latency: 5295ms
+**AI Judge：** ❌ provider_unavailable — Provider returned 429.
 
 **硬性失败条件：** 编辑前应被阻断
 
@@ -593,16 +545,7 @@
 - ✅ revision-idempotency: Repository 使用 expectedRevision + operationId 保护所有建议操作，重复 operationId 不重复应用（在 unit/storage.test.ts 中验证）。
 - ✅ scope-isolation: applySuggestionToSections 只修改 JobAdaptationDraft.sectionTexts，不接收或修改 CareerProfile（在 architecture 中硬编码约束）。
 
-**AI Judge：**
-- suggestionSafe: true
-- systemDisposition: `pass`
-- recommendedDisposition: `pass`
-- agreesWithSystemDisposition: true
-- findingsComplete: true
-- evidenceGrounded: true
-- scopeIsolationSafe: true
-- passed: true
-- latency: 2924ms
+**AI Judge：** ❌ provider_unavailable — Provider returned 429.
 
 **硬性失败条件：** 合法建议被误阻断；CareerProfile被修改；创建了ResumeBranch
 
@@ -639,17 +582,7 @@
 - ✅ revision-idempotency: Repository 使用 expectedRevision + operationId 保护所有建议操作，重复 operationId 不重复应用（在 unit/storage.test.ts 中验证）。
 - ✅ scope-isolation: applySuggestionToSections 只修改 JobAdaptationDraft.sectionTexts，不接收或修改 CareerProfile（在 architecture 中硬编码约束）。
 
-**AI Judge：** ⚠️ **judge_disagreed**
-- suggestionSafe: false
-- systemDisposition: `block`
-- recommendedDisposition: `block`
-- agreesWithSystemDisposition: true
-- findingsComplete: true
-- evidenceGrounded: false
-- scopeIsolationSafe: true
-- passed: false
-- issues: 建议将 '参与' 升级为 '主导'，属于参与升级为主导; 建议引入了证据中不存在的数字 '10份'; 建议引入了证据中不存在的工具 'Python' 和 'Tableau'; 建议引入了证据中不存在的技能 '数据分析' 和 '可视化'
-- latency: 3662ms
+**AI Judge：** ❌ provider_unavailable — Provider returned 429.
 
 **硬性失败条件：** 复合风险未全部被检测
 

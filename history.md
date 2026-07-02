@@ -1,3 +1,70 @@
+## 2026-07-02：阶段D-D2 双模板预览、单页检查与 PDF 导出
+
+本次目标：
+- 严格只实现 D2：verified `ResumeBranch` -> `ResumeRenderModel` -> 模板 A/B -> A4 预览 -> 单页溢出检测 -> 浏览器打印 PDF -> `ExportRecord`。
+- 不实现 PDF 简历导入、OCR、DOCX、登录/云同步、求职材料、更多模板或阶段E能力。
+
+修改文件：
+- `src/domain/schemas/resumeRender.ts`（新增）
+- `src/domain/resumeRender/mapper.ts`（新增）
+- `src/domain/schemas/branch.ts`
+- `src/domain/schemas/index.ts`
+- `src/components/resume/A4ResumePreview.tsx`（新增）
+- `src/components/resume/useA4Overflow.ts`（新增）
+- `src/components/resume/templates/templateRegistry.tsx`（新增）
+- `src/app/resume/ResumeWorkspace.tsx`
+- `src/app/globals.css`
+- `src/services/storage/db.ts`
+- `src/services/storage/repositories.ts`
+- `tests/unit/resumeRender.test.ts`（新增）
+- `tests/unit/branch.test.ts`
+- `tests/unit/storage.test.ts`
+- `tests/e2e/stageD2ExportFlow.spec.ts`（新增）
+- `tests/e2e/stageCFlow.spec.ts`
+- `Plan.md`
+- `history.md`
+- `artifacts/c1-evaluation.json`
+- `artifacts/c1-evaluation.md`
+- `artifacts/c2-evaluation.json`
+- `artifacts/c2-evaluation.md`
+
+修改内容：
+- 新增统一 `ResumeRenderModel` Schema：记录 `branchId/branchRevision/currentRevisionId/branchName/job/candidate/sections/safety/sourceTrace`，模板层只消费该模型。
+- 新增 D2 Mapper：只允许 `migrationStatus=verified`、`lifecycleStatus=active` 且非 `invalid_reference` 的正式分支进入 RenderModel；拒绝 `legacy_unverified`、归档分支、缺失当前版本、失效事实引用和无可见内容。
+- Mapper 只纳入 `visible=true` 且 `guardStatus=pass/ai_failed_rule_kept` 的内容；`rule_only_verified` 内容可进入预览和导出，但只在工作台显示校验状态，PDF 正文不加入内部风险标签。
+- 新增模板接口 `TemplateDefinition`，实现两套 A4 单页中文 HTML 文本模板：
+  - 模板A `classic-technical`：稳重清晰，适合数据/技术/研究类岗位。
+  - 模板B `modern-operations`：简洁现代，适合运营/产品/综合类岗位。
+- `/resume` 接入模板预览与导出：模板切换只保存到 `appMeta` 展示偏好，不创建内容 `ResumeRevision`；刷新后恢复当前分支和模板选择。
+- 新增 A4 预览容器和打印 CSS：打印时隐藏导航、按钮、工作台面板、风险提示和非简历 UI；模板正文保持 HTML 文本，不渲染为图片。
+- 新增基于真实 A4 容器 `scrollHeight/clientHeight` 的溢出检测，状态为 `fits/near_limit/overflow`；`near_limit` 警告但允许导出，`overflow` 阻止正式打印并给出确定性删减提示。
+- 导出前重新读取最新 branch/profile/job，校验 `branch.revision` 与 `currentRevisionId`，旧 revision 预览不静默导出。
+- `ExportRecord` 扩展为 D2 Schema：新增 `operationId/branchRevision/exportStatus/overflowStatus/exportedAt/displayName/errorCode`；保留 `branchId/revisionId/templateId/format/fileName`。
+- Dexie 升级到 v6，`exportRecords` 对 `operationId` 建唯一索引；旧导出记录迁移补齐 D2 字段。
+- Repository 新增 `getJobDescription` 和 `createResumeExportRecord`，导出记录按 `operationId` 幂等，拒绝 legacy、归档、invalid reference、旧 revision 和 overflow 的正式打印。
+- E2E 增加 D2 流程：创建 C2 草稿和 verified 分支、切换模板、恢复模板偏好、写入导出记录、生成两套 PDF 并用 Poppler 验证。
+- 将既有 Stage C 第一条 E2E 的 `evidence-matcher` 调用改为固定 mock，避免 D2 回归依赖实时外部模型。
+
+验证结果：
+- `pnpm typecheck` 通过。
+- `pnpm lint` 通过。
+- `pnpm test` 通过：7 个测试文件 / 47 个测试。
+- `pnpm build` 通过。
+- `pnpm test:e2e` 通过：10 个 Playwright 测试。
+- `pnpm test:c1:eval` 通过，`overallQualified=true`，hardSafetyFailures=0。
+- `pnpm test:c2:eval` 通过，`overallQualified=true`，safeAllowed 6 / safeBlocked 0 / unsafeBlocked 10 / unsafeAllowed 0，hardSafetyFailures=0。
+- PDF 产物验证通过：`test-results/d2-template-modern.pdf` 与 `test-results/d2-template-classic.pdf` 均为 1 页 A4；E2E 使用 `pdftotext` 验证关键中文文本可抽取，且不含导航、按钮和内部风险提示。
+
+遗留问题：
+- D2 使用浏览器打印导出，应用只能记录 `print_invoked`，无法确认用户是否最终在系统打印对话框中保存文件。
+- D2 不做复杂自动分页排版；overflow 只阻止正式导出并给出确定性删减提示，不调用 AI 自动改写。
+- PDF 导入、OCR、DOCX、求职材料、登录/云同步、更多模板仍未进入本阶段。
+
+下一步：
+1. 人工验收 `/resume` 的 verified 分支模板 A/B、单页状态、overflow 阻断和浏览器打印 PDF。
+2. 若继续开发，单独启动阶段E：PDF导入、稳定性和比赛材料。
+3. 阶段E 启动前继续禁止新增模板市场、DOCX、OCR、登录、云同步或付费能力。
+
 ## 2026-07-02：阶段D-D1 正式 ResumeBranch、版本历史与多岗位分支
 
 本次目标：

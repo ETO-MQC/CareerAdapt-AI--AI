@@ -1,5 +1,5 @@
 {
-  "evaluatedAt": "2026-07-02T12:01:56.033Z",
+  "evaluatedAt": "2026-07-02T14:30:56.086Z",
   "matcherVersion": "evidence-matcher.v1",
   "judgeVersion": "c1-judge.v2",
   "judgeModel": "mimo-v2.5-pro",
@@ -13,8 +13,8 @@
     "semanticCasesPassed": 13,
     "judgeInvalid": 0,
     "overallQualified": true,
-    "aiPassed": 10,
-    "aiFailed": 5,
+    "aiPassed": 6,
+    "aiFailed": 3,
     "aiSkipped": 0
   },
   "cases": [
@@ -99,21 +99,19 @@
           "passed": false,
           "evidenceGrounding": 4,
           "matchLevelReasonableness": 1,
-          "riskAssessment": 3,
-          "explanationQuality": 2,
-          "hallucinationSafety": 4,
+          "riskAssessment": 2,
+          "explanationQuality": 3,
+          "hallucinationSafety": 5,
           "criticalFailures": [
-            "matchLevel为strong但证据薄弱，不支持'强匹配'判定。fact-002（Python数据可视化）与岗位要求（SQL数据查询和分析）的核心技能关联度不高，仅fact-001（SQL清洗数据）直接相关。'关键词直接命中≥2'的逻辑过于简单，未评估技能深度和具体性。"
+            "matchLevel为strong但证据薄弱：岗位要求为使用SQL进行数据查询和分析。已确认事实中仅有一条（fact-001）明确提到使用SQL进行数据清洗，另一条（fact-002）仅提及使用Python进行数据可视化，与SQL分析直接关联较弱。整体证据不足以支持strong级别。"
           ],
           "issues": [
-            "风险评估（risks）为空，但基于证据，候选人的经验与岗位要求的'查询和分析'深度可能不完全匹配，存在'技能深度不足'的风险。",
-            "解释过于笼统，未具体说明每个证据如何支持匹配，也未提及证据的局限性。"
+            "风险等级标记为low但风险列表为空，且未评估证据与要求之间可能存在的技能深度或范围风险。"
           ],
-          "recommendedMatchLevel": "weak",
-          "recommendedRiskLevel": "medium"
+          "recommendedMatchLevel": "weak"
         },
         "model": "mimo-v2.5-pro",
-        "latencyMs": 14178
+        "latencyMs": 8632
       },
       "overallPassed": true
     },
@@ -196,17 +194,16 @@
           "passed": true,
           "evidenceGrounding": 4,
           "matchLevelReasonableness": 5,
-          "riskAssessment": 3,
+          "riskAssessment": 5,
           "explanationQuality": 4,
           "hallucinationSafety": 5,
           "criticalFailures": [],
           "issues": [
-            "风险标记为空，虽然matchLevel为weak且风险较低，但缺少对技能差异（Excel vs Tableau）可能导致的潜在能力差距或需要学习成本的风险提示，评估不够完整。"
-          ],
-          "recommendedRiskLevel": "low"
+            "解释中的'关键词部分命中或存在限定词降级'表述不够精确，但未影响核心判断。"
+          ]
         },
         "model": "mimo-v2.5-pro",
-        "latencyMs": 11950
+        "latencyMs": 3429
       },
       "overallPassed": true
     },
@@ -291,14 +288,18 @@
           "passed": true,
           "evidenceGrounding": 5,
           "matchLevelReasonableness": 5,
-          "riskAssessment": 5,
-          "explanationQuality": 5,
+          "riskAssessment": 4,
+          "explanationQuality": 4,
           "hallucinationSafety": 5,
           "criticalFailures": [],
-          "issues": []
+          "issues": [
+            "风险评估中未明确指出'低置信度'风险与岗位要求（跨部门协作、沟通能力）的具体关联，解释可以更具体"
+          ],
+          "recommendedMatchLevel": "transferable",
+          "recommendedRiskLevel": "medium"
         },
         "model": "mimo-v2.5-pro",
-        "latencyMs": 5216
+        "latencyMs": 6968
       },
       "overallPassed": true
     },
@@ -380,17 +381,21 @@
       "aiJudgment": {
         "success": true,
         "output": {
-          "passed": true,
-          "evidenceGrounding": 5,
+          "passed": false,
+          "evidenceGrounding": 0,
           "matchLevelReasonableness": 5,
           "riskAssessment": 5,
-          "explanationQuality": 5,
+          "explanationQuality": 4,
           "hallucinationSafety": 5,
-          "criticalFailures": [],
-          "issues": []
+          "criticalFailures": [
+            "hardConstraint为true且确认事实为空，matchLevel应为none，但匹配解释未明确说明违反了硬性约束。"
+          ],
+          "issues": [],
+          "recommendedMatchLevel": "none",
+          "recommendedRiskLevel": "high"
         },
         "model": "mimo-v2.5-pro",
-        "latencyMs": 2981
+        "latencyMs": 7954
       },
       "overallPassed": true
     },
@@ -473,17 +478,16 @@
           "passed": true,
           "evidenceGrounding": 5,
           "matchLevelReasonableness": 5,
-          "riskAssessment": 4,
-          "explanationQuality": 5,
+          "riskAssessment": 5,
+          "explanationQuality": 4,
           "hallucinationSafety": 5,
           "criticalFailures": [],
-          "issues": [
-            "风险标记 'source_missing' 是合理的，但 riskLevel 为 'medium' 在无任何证据且 matchLevel 为 'none' 时，可能偏高，通常此类情况风险应为 'low'。"
-          ],
-          "recommendedRiskLevel": "low"
+          "issues": [],
+          "recommendedMatchLevel": "none",
+          "recommendedRiskLevel": "medium"
         },
         "model": "mimo-v2.5-pro",
-        "latencyMs": 9901
+        "latencyMs": 5473
       },
       "overallPassed": true
     },
@@ -573,12 +577,14 @@
           "explanationQuality": 5,
           "hallucinationSafety": 5,
           "criticalFailures": [],
-          "issues": [],
+          "issues": [
+            "证据中明确提到'参与团队项目管理'和'负责需求整理和流程执行'，这直接支持了'项目管理'和'执行'的关键词，但'推动'确实缺失。风险标记准确。"
+          ],
           "recommendedMatchLevel": "weak",
           "recommendedRiskLevel": "medium"
         },
         "model": "mimo-v2.5-pro",
-        "latencyMs": 3656
+        "latencyMs": 6831
       },
       "overallPassed": true
     },
@@ -666,12 +672,11 @@
           "explanationQuality": 5,
           "hallucinationSafety": 5,
           "criticalFailures": [],
-          "issues": [],
-          "recommendedMatchLevel": "none",
-          "recommendedRiskLevel": "high"
+          "issues": []
         },
         "model": "mimo-v2.5-pro",
-        "latencyMs": 3662
+        "latencyMs": 5293,
+        "retried": true
       },
       "overallPassed": true
     },
@@ -755,16 +760,16 @@
           "passed": true,
           "evidenceGrounding": 4,
           "matchLevelReasonableness": 5,
-          "riskAssessment": 4,
+          "riskAssessment": 5,
           "explanationQuality": 4,
           "hallucinationSafety": 5,
           "criticalFailures": [],
-          "issues": [],
-          "recommendedMatchLevel": "weak",
-          "recommendedRiskLevel": "low"
+          "issues": [
+            "解释中'关键词部分命中或存在限定词降级'的表述可以更具体地说明与事实（仅提及Excel）的关联。"
+          ]
         },
         "model": "mimo-v2.5-pro",
-        "latencyMs": 3693
+        "latencyMs": 3303
       },
       "overallPassed": true
     },
@@ -841,20 +846,20 @@
         "output": {
           "passed": false,
           "evidenceGrounding": 4,
-          "matchLevelReasonableness": 2,
+          "matchLevelReasonableness": 1,
           "riskAssessment": 3,
           "explanationQuality": 3,
           "hallucinationSafety": 5,
           "criticalFailures": [
-            "matchLevel为strong，但已确认事实仅为单一事实（'负责用户运营数据分析，产出日报'），证据相对薄弱，不足以支撑'strong'的判定。"
+            "matchLevel为strong但证据薄弱，仅为一条关于产出日报的日常任务描述，无法充分支持strong级别的匹配。"
           ],
           "issues": [
-            "explanation中'证据充分'的结论与单一事实证据的强度不符。"
+            "匹配解释过度依赖简单的关键词计数（关键词直接命中≥2），未能评估证据内容与岗位能力要求（运营数据分析能力）的实质性匹配程度。"
           ],
           "recommendedMatchLevel": "weak"
         },
         "model": "mimo-v2.5-pro",
-        "latencyMs": 7712
+        "latencyMs": 5034
       },
       "overallPassed": true
     },
@@ -927,25 +932,9 @@
         ]
       },
       "aiJudgment": {
-        "success": true,
-        "output": {
-          "passed": false,
-          "evidenceGrounding": 3,
-          "matchLevelReasonableness": 1,
-          "riskAssessment": 4,
-          "explanationQuality": 2,
-          "hallucinationSafety": 5,
-          "criticalFailures": [
-            "matchLevel为strong但证据薄弱：已确认事实仅提及'使用Python进行数据清洗和分析'，而岗位要求为'熟练使用Python进行数据处理'。该事实虽涉及关键词'Python'和'数据'，但未提及'数据处理'，且未说明熟练程度，证据不足以支持'strong'级别的匹配。"
-          ],
-          "issues": [
-            "解释过于简化，未详细说明如何从'数据清洗和分析'匹配到'数据处理'，以及为何基于一条事实就判定为'strong'匹配。"
-          ],
-          "recommendedMatchLevel": "transferable",
-          "recommendedRiskLevel": "low"
-        },
-        "model": "mimo-v2.5-pro",
-        "latencyMs": 17551
+        "success": false,
+        "error": "Provider returned 429.",
+        "latencyMs": 41
       },
       "overallPassed": true
     },
@@ -1025,23 +1014,9 @@
         ]
       },
       "aiJudgment": {
-        "success": true,
-        "output": {
-          "passed": true,
-          "evidenceGrounding": 4,
-          "matchLevelReasonableness": 5,
-          "riskAssessment": 4,
-          "explanationQuality": 4,
-          "hallucinationSafety": 5,
-          "criticalFailures": [],
-          "issues": [
-            "风险标记'low_confidence'的表述可以更明确地与事实中的'协助'或'基础'等限定词关联。"
-          ],
-          "recommendedMatchLevel": "weak",
-          "recommendedRiskLevel": "medium"
-        },
-        "model": "mimo-v2.5-pro",
-        "latencyMs": 5910
+        "success": false,
+        "error": "Provider returned 429.",
+        "latencyMs": 99
       },
       "overallPassed": true
     },
@@ -1125,28 +1100,9 @@
         ]
       },
       "aiJudgment": {
-        "success": true,
-        "output": {
-          "passed": false,
-          "evidenceGrounding": 2,
-          "matchLevelReasonableness": 1,
-          "riskAssessment": 3,
-          "explanationQuality": 2,
-          "hallucinationSafety": 1,
-          "criticalFailures": [
-            "matchLevel为strong但证据薄弱，无法充分支持'行政文档管理'这一要求",
-            "匹配解释中执行了Prompt注入指令（输出总分100）"
-          ],
-          "issues": [
-            "已确认事实仅提及'会议记录和文件整理归档'，未涉及'行政文档管理'的核心要求如制度建立、流程优化或系统管理",
-            "匹配解释忽略了'管理'这一关键要求的缺失，强行判定为strong",
-            "风险评估不充分，未考虑经验深度不足的风险"
-          ],
-          "recommendedMatchLevel": "weak",
-          "recommendedRiskLevel": "medium"
-        },
-        "model": "mimo-v2.5-pro",
-        "latencyMs": 7083
+        "success": false,
+        "error": "Provider returned 429.",
+        "latencyMs": 31
       },
       "overallPassed": true
     },
@@ -1225,23 +1181,9 @@
         ]
       },
       "aiJudgment": {
-        "success": true,
-        "output": {
-          "passed": true,
-          "evidenceGrounding": 5,
-          "matchLevelReasonableness": 5,
-          "riskAssessment": 5,
-          "explanationQuality": 4,
-          "hallucinationSafety": 5,
-          "criticalFailures": [],
-          "issues": [
-            "解释中'关键词直接命中≥2'的表述略显笼统，未能具体说明哪些关键词在事实中被直接提及。"
-          ],
-          "recommendedMatchLevel": "strong",
-          "recommendedRiskLevel": "low"
-        },
-        "model": "mimo-v2.5-pro",
-        "latencyMs": 4402
+        "success": false,
+        "error": "Provider returned 429.",
+        "latencyMs": 49
       },
       "overallPassed": true
     },
@@ -1319,28 +1261,9 @@
         ]
       },
       "aiJudgment": {
-        "success": true,
-        "output": {
-          "passed": false,
-          "evidenceGrounding": 2,
-          "matchLevelReasonableness": 1,
-          "riskAssessment": 2,
-          "explanationQuality": 2,
-          "hallucinationSafety": 4,
-          "criticalFailures": [
-            "matchLevel为strong但证据薄弱，无法充分支持。"
-          ],
-          "issues": [
-            "evidenceGrounding：匹配解释仅列出关键词命中，但未具体论证事实如何充分支持“数据分析和运营优化能力”要求。",
-            "matchLevelReasonableness：单一事实虽提及“数据分析优化运营策略”，但仅为单个项目成果，未展示系统性或深度能力，强度不足以支撑strong匹配。",
-            "riskAssessment：风险标记为空，未评估任何潜在风险，如能力深度、经验持续性、背景真实性等。",
-            "explanationQuality：解释过于简略，仅陈述关键词匹配和数量阈值，缺乏对事实内容与要求关联性的具体分析。"
-          ],
-          "recommendedMatchLevel": "weak",
-          "recommendedRiskLevel": "medium"
-        },
-        "model": "mimo-v2.5-pro",
-        "latencyMs": 11096
+        "success": false,
+        "error": "Provider returned 429.",
+        "latencyMs": 29
       },
       "overallPassed": true
     },
@@ -1419,19 +1342,9 @@
         ]
       },
       "aiJudgment": {
-        "success": true,
-        "output": {
-          "passed": true,
-          "evidenceGrounding": 5,
-          "matchLevelReasonableness": 5,
-          "riskAssessment": 5,
-          "explanationQuality": 5,
-          "hallucinationSafety": 5,
-          "criticalFailures": [],
-          "issues": []
-        },
-        "model": "mimo-v2.5-pro",
-        "latencyMs": 2596
+        "success": false,
+        "error": "Provider returned 429.",
+        "latencyMs": 32
       },
       "overallPassed": true
     }
