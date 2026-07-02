@@ -92,6 +92,7 @@
 - [x] C1 AI辅助自动验收：15个脱敏验收案例覆盖strong/weak/transferable/none/团队风险/硬约束缺口/未确认排除/白名单外ID/stale/Provider失败/Prompt注入；确定性硬校验（ID白名单、事实确认、no-evidence、stale、resolve一致性、禁止总分、禁止新增事实、风险约束）；独立AI语义Judge（c1-evaluator，独立prompt，不修改结果）；`pnpm test:c1:eval` 输出 `artifacts/c1-evaluation.json` 和 `artifacts/c1-evaluation.md`；AI辅助验收不替代人工验收。
 - [x] C1.1 AI验收校准与Matcher质量收口：收紧规则Matcher（参与/协助等限定词降级、团队上下文检测、独立性不匹配检测）；改进匹配解释结构（[支持]/[缺失]/[判定]/[风险]）；增加expectedDisposition区分合法/非法案例；Prompt注入区分inputContainsInjection与modelFollowedInjection并清理注入文本；Judge一致性校验（criticalFailures/score阈值）+一次重试；新报告统计positiveCasesPassed/negativeCasesCorrectlyRejected/hardSafetyFailures/semanticCasesPassed/judgeInvalid/overallQualified；所有安全断言通过。
 - [x] C2 AI建议与 Fact Guard：只读取 `resolveEffectiveMatch` 得到且实时未 stale 的匹配；创建 `JobAdaptationDraft` 而非正式 `ResumeBranch`；resume-tailor 只使用 `usedEvidenceRefs` 中的已确认事实；规则 Fact Guard 先执行，再调用 AI fact-guard 复核；支持单条接受、拒绝、编辑后重检、重新检测和撤销，全部经 Dexie 事务和 `expectedRevision`/`operationId` 保护。
+- [x] C2.1 AI建议与 Fact Guard 验收收口：16个脱敏验收案例覆盖合法措辞优化、合法删减、合法排序、新增数字、新增工具/技能、参与变主导、协助变独立、了解变熟练、团队成果变个人、stale阻断、Prompt注入、Provider失败降级、合法新增（证据存在）、编辑后重检、建议范围隔离、复合风险；确定性硬校验（usedEvidenceRefs白名单、事实确认状态、新增实体/数字/技能检测、表达强度升级检测、ownership风险、blocked_high_risk不可接受、stale状态、Provider失败降级）；独立AI语义Judge（c2-judge.v2，输出suggestionSafe/actualDisposition/dispositionCorrect/findingsComplete/evidenceGrounded/scopeIsolationSafe/passed，只评价Fact Guard和建议安全性，不修改建议）；混淆矩阵（safeAllowed/safeBlocked/unsafeBlocked/unsafeAllowed）证明Fact Guard价值；工作流验证（accept/reject/edit-recheck/revoke、expectedRevision/operationId幂等、scope隔离：建议只修改JobAdaptationDraft不修改CareerProfile不创建ResumeBranch）；`pnpm test:c2:eval` 输出 `artifacts/c2-evaluation.json` 和 `artifacts/c2-evaluation.md`；不加入 `pnpm verify`；AI辅助验收不替代人工验收。
 
 ### 阶段D：岗位分支、模板和导出
 
@@ -355,9 +356,9 @@
 
 ## 下次开发路线
 
-阶段C-C2 已完成，等待人工验收后再进入阶段D。
+阶段C-C2.1 已完成，等待人工验收后再进入阶段D。
 
-1. 人工验收 C2：在 `/jobs` 依次验证 C1 匹配、C2 草稿创建、建议生成、Fact Guard、单条接受/拒绝/编辑后重检/重新检测/撤销。
-2. 查看 `artifacts/c1-evaluation.md`，确认 C2 开发后 C1/C1.1 安全指标仍保持通过；AI辅助验收报告不替代人工判断。
-3. C2 人工确认通过后，再进入阶段D：正式 `ResumeBranch`、版本历史、模板预览和 PDF 导出。
+1. 人工验收 C2.1：查看 `artifacts/c2-evaluation.md`，确认16个案例全部通过；在 `/jobs` 依次验证 C1 匹配、C2 草稿创建、建议生成、Fact Guard、单条接受/拒绝/编辑后重检/重新检测/撤销。
+2. 查看 `artifacts/c1-evaluation.md`，确认 C2.1 开发后 C1/C1.1 安全指标仍保持通过；AI辅助验收报告不替代人工判断。
+3. C2.1 人工确认通过后，再进入阶段D：正式 `ResumeBranch`、版本历史、模板预览和 PDF 导出。
 4. 阶段D启动前仍不进入 PDF 导入、求职材料、登录/云端能力，不写入 API 密钥，不覆盖职业母档案事实层。

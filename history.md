@@ -2,6 +2,75 @@
 
 本文件记录每次开发完成后的实际修改、验证结果、遗留问题和下一步路线。每次修改代码或文档后，都要同步更新 `Plan.md` 的状态。
 
+## 2026-07-02：阶段C-C2.1 AI建议与 Fact Guard 验收收口
+
+本次目标：
+- 基于 C2 已完成的前提下，完成 C2.1 验收收口。
+- 新增 `pnpm test:c2:eval`，不加入 `pnpm verify`。
+- 建立 16 个脱敏案例覆盖所有要求的风险场景。
+- 对每个案例执行确定性硬校验和工作流验证。
+- AI Judge 只评价 Fact Guard 和建议安全性，不修改建议。
+- 生成 `artifacts/c2-evaluation.json` 和 `artifacts/c2-evaluation.md`。
+- 不进入阶段D，不创建正式 ResumeBranch，不实现模板或 PDF 导出。
+
+修改文件：
+- `package.json`（新增 `test:c2:eval` 脚本）
+- `vitest.c2-eval.config.ts`（新增）
+- `tests/c2-eval/cases.ts`（新增：16个脱敏验收案例）
+- `tests/c2-eval/hardValidate.ts`（新增：确定性硬校验逻辑）
+- `tests/c2-eval/judgeSchema.ts`（新增：AI Judge 输入/输出 Zod Schema）
+- `tests/c2-eval/judgePrompt.ts`（新增：Judge system prompt c2-judge.v1）
+- `tests/c2-eval/aiJudge.ts`（新增：AI 语义 Judge 调用）
+- `tests/c2-eval/runEval.ts`（新增：主入口，串联硬校验+工作流测试+AI Judge+报告生成）
+- `tests/c2-eval/c2-eval.test.ts`（新增：vitest 测试文件）
+- `Plan.md`
+- `history.md`
+
+修改内容：
+- 新增 16 个脱敏 C2 验收案例：
+  - 合法案例（8个）：措辞优化、删减、排序、Provider失败降级、合法新增（证据存在）、建议范围隔离、编辑后重检（编辑前阻断后编辑通过）、合法措辞优化
+  - 非法案例（8个）：新增数字、新增工具/技能、参与变主导、协助变独立、了解变熟练、团队成果变个人、stale阻断、Prompt注入、复合风险
+- 每个案例定义：originalText、checkedText、usedEvidenceRefs（已确认事实引用）、expectedDisposition（pass/block）、expectedGuardStatus、expectedFindingTypes、hardFailIf。
+- 确定性硬校验：处置预期、guard status、finding type 检查、evidence ref 白名单、Prompt 注入检测、stale 阻断。
+- 工作流验证：evidence ref 完整性、事实确认状态、新增实体/数字/技能检测、表达强度升级检测、ownership 风险、blocked_high_risk 不可接受、stale 状态、Provider 失败降级、accept 操作、reject 操作、expectedRevision/operationId 幂等、scope 隔离（只修改 JobAdaptationDraft，不修改 CareerProfile，不创建 ResumeBranch）。
+- 独立 AI 语义 Judge（c2-judge.v1）：只评价 Fact Guard 安全性和完整性，不修改建议；输入为原始文本+建议文本+证据引用+Fact Guard 结果；输出 5 维度 0-5 评分（factSafety、guardCompleteness、riskAssessment、hallucinationSafety、scopeIsolation）+ criticalFailures + issues。
+- AI Judge 统计分类修正：`aiPassed`（模型返回且Judge通过）、`aiSemanticFailed`（模型返回但Judge不通过）、`aiUnavailable`（429/超时/网络错误）、`aiInvalid`（Schema/一致性错误）、`aiSkipped`（仅未配置API时为true）；Markdown 与 JSON 使用同一汇总逻辑。
+- AI Judge Schema 重构：输入分为 `expectedDisposition`（人工定义）、`systemDisposition`（Fact Guard 真实执行结果，不由 Judge 生成）；Judge 输出 `suggestionSafe`/`recommendedDisposition`/`agreesWithSystemDisposition`/`findingsComplete`/`evidenceGrounded`/`scopeIsolationSafe`/`passed`/`issues`；Judge 独立评估建议安全性，`passed = agreesWithSystemDisposition && evidenceGrounded && scopeIsolationSafe`；一致性校验强制 `suggestionSafe↔recommendedDisposition` 和 `passed` 计算约束；Prompt 升级到 c2-judge.v2。
+- 双重指标分离：产品确定性指标用 `expectedDisposition × systemDisposition`（safeAllowed/safeBlocked/unsafeBlocked/unsafeAllowed），证明 Fact Guard 系统处置正确性；AI Judge 一致性指标用 `recommendedDisposition × systemDisposition`（judgeAgreed/judgeDisagreed/judgeUnavailable/judgeInvalid），证明 Judge 与系统的一致程度。
+- `aiSemanticFailed` 重命名为 `aiJudgeDisagreed`，避免误读为产品存在语义安全失败。
+- 有 API Key 时运行真实 AI 评价；无 Key 时仍运行硬校验并标记 AI Judge skipped。
+- 生成 `artifacts/c2-evaluation.json` 和 `artifacts/c2-evaluation.md`，报告不含 API Key 或未脱敏个人数据。
+- AI 辅助验收不替代人工验收。
+
+验证结果：
+- `pnpm typecheck` 通过。
+- `pnpm lint` 通过。
+- `pnpm test` 通过：5 个测试文件 / 38 个测试。
+- `pnpm build` 通过。
+- `pnpm test:e2e` 通过：8 个 Playwright 测试。
+- `pnpm test:c1:eval` 通过，C1/C1.1 安全指标未降低。
+- `pnpm test:c2:eval` 通过：16个案例硬校验+工作流测试全部通过，总体合格 ✅。产品确定性指标：safeAllowed 6 / safeBlocked 0 / unsafeBlocked 10 / unsafeAllowed 0（基于 expectedDisposition × systemDisposition）；AI Judge 一致性指标：judgeAgreed 13 / judgeDisagreed 0 / judgeUnavailable 3 / judgeInvalid 0（基于 recommendedDisposition × systemDisposition）。
+- `pnpm test:ai:real` 受外部 API 429 限流影响（非代码问题），待限流解除后重试。
+
+C2.1 验收指标：
+- 总案例：16
+- 合法案例通过：8/8（100%）
+- 非法案例正确阻断：8/8（100%）
+- 硬安全失败：0
+- 工作流测试通过：全部
+- 总体合格：✅
+
+遗留问题：
+- `test:ai:real` 受外部 API 429 限流影响，非代码问题。
+- C2.1 仍复用 `/jobs` 当前第一份 profile/job 的演示选择方式，正式多岗位选择体验留到阶段D或后续 UI 收口。
+- `JobAdaptationDraft` 仍是岗位适配草稿，不是正式 `ResumeBranch`；正式分支、版本历史、模板预览和 PDF 导出留到阶段D。
+- 本阶段未进入 PDF 导入、求职材料、登录/云端能力，未写入 API 密钥，未覆盖职业母档案事实层。
+
+下一步：
+1. 人工验收 C2.1：查看 `artifacts/c2-evaluation.md`，在 `/jobs` 验证页面流程。
+2. C2.1 人工确认通过后，进入阶段D：正式 `ResumeBranch`、版本历史、模板预览和 PDF 导出。
+3. 阶段D启动前继续保持 PDF 导入、求职材料和登录/云端能力后置。
+
 ## 2026-07-02：阶段C-C2 AI建议与 Fact Guard
 
 本次目标：

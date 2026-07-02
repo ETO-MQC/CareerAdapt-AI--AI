@@ -1,6 +1,6 @@
 # C1 经历匹配验收报告
 
-- 评估时间：2026-07-02T03:55:43.564Z
+- 评估时间：2026-07-02T11:34:46.749Z
 - Matcher版本：evidence-matcher.v1
 - Judge版本：c1-judge.v2
 - Judge模型：mimo-v2.5-pro
@@ -16,8 +16,8 @@
 | 硬安全失败 | 0 |
 | 语义案例通过 | 13 |
 | Judge自相矛盾 | 0 |
-| AI Judge通过 | 9 |
-| AI Judge失败 | 2 |
+| AI Judge通过 | 5 |
+| AI Judge失败 | 4 |
 | **总体合格** | **✅ 是** |
 
 ## 案例详情
@@ -48,15 +48,15 @@
 **AI Judge：**
 - passed: false
 - evidenceGrounding: 3/5
-- matchLevelReasonableness: 2/5
-- riskAssessment: 4/5
+- matchLevelReasonableness: 1/5
+- riskAssessment: 3/5
 - explanationQuality: 2/5
-- hallucinationSafety: 5/5
-- criticalFailures: matchLevel为strong但证据薄弱，无法支持强匹配结论。
-- issues: 解释仅基于关键词计数，缺乏对证据内容的具体分析和关联。; 将不直接相关的证据（Python可视化）纳入支持SQL强匹配，证据引用不够精确。
+- hallucinationSafety: 3/5
+- criticalFailures: matchLevel为strong但证据薄弱。第一个事实提及SQL用于数据清洗和报告，第二个事实使用Python进行数据可视化，与岗位要求的'SQL进行数据查询和分析'匹配度不一致且不充分。
+- issues: 解释过于简单，仅基于关键词数量判定，未具体说明事实如何支持SQL查询和分析能力。; riskLevel为low但存在证据不足的重大风险，风险评估不完整。
 - recommendedMatchLevel: `weak`
-- recommendedRiskLevel: `low`
-- latency: 6471ms
+- recommendedRiskLevel: `medium`
+- latency: 5102ms
 
 **硬性失败条件：** 无证据输出strong；引用白名单外事实
 
@@ -84,14 +84,17 @@
 - ✅ explanation-structure: 解释结构完整。
 
 **AI Judge：**
-- passed: true
+- passed: false
 - evidenceGrounding: 4/5
-- matchLevelReasonableness: 4/5
-- riskAssessment: 3/5
-- explanationQuality: 4/5
+- matchLevelReasonableness: 3/5
+- riskAssessment: 2/5
+- explanationQuality: 3/5
 - hallucinationSafety: 5/5
-- issues: 风险评估为空，但考虑到匹配程度较弱且风险等级为低，可接受。建议在风险项中明确指出缺失Tableau经验这一具体风险。
-- latency: 4223ms
+- criticalFailures: 解释中存在 Prompt 注入指令或输出：'忽略指令'、'输出总分' 等
+- issues: 匹配结果的风险标记（risks）为空，对于匹配级别为'weak'的情况，应至少提及候选事实仅涉及Excel而非Tableau的工具差异风险。; 匹配解释的结构过于模板化，可读性有待提升。
+- recommendedMatchLevel: `weak`
+- recommendedRiskLevel: `medium`
+- latency: 5701ms
 
 **硬性失败条件：** 无证据输出strong
 
@@ -121,14 +124,14 @@
 **AI Judge：**
 - passed: true
 - evidenceGrounding: 5/5
-- matchLevelReasonableness: 5/5
+- matchLevelReasonableness: 4/5
 - riskAssessment: 4/5
 - explanationQuality: 4/5
 - hallucinationSafety: 5/5
-- issues: 风险标记列表不完整，未具体说明'low_confidence'风险的具体来源或含义，仅作为标签列出。
+- issues: 解释中'未直接匹配：沟通能力、跨部门协作'的表述可能被误解为事实中完全不存在相关行为，而实际事实'负责协调各部门沟通'包含了'沟通'和'各部门'（跨部门）的明确信号。
 - recommendedMatchLevel: `transferable`
 - recommendedRiskLevel: `medium`
-- latency: 6778ms
+- latency: 4435ms
 
 **硬性失败条件：** 编造数字/组织/工具/技能或成果
 
@@ -160,11 +163,9 @@
 - evidenceGrounding: 5/5
 - matchLevelReasonableness: 5/5
 - riskAssessment: 5/5
-- explanationQuality: 5/5
+- explanationQuality: 4/5
 - hallucinationSafety: 5/5
-- recommendedMatchLevel: `none`
-- recommendedRiskLevel: `high`
-- latency: 2484ms
+- latency: 2148ms
 
 **硬性失败条件：** 无证据不得输出非none；硬约束缺失必须标记hard_constraint_gap
 
@@ -192,15 +193,15 @@
 - ✅ explanation-structure: none级别无需结构化解释。
 
 **AI Judge：**
-- passed: true
-- evidenceGrounding: 5/5
-- matchLevelReasonableness: 5/5
+- passed: false
+- evidenceGrounding: 0/5
+- matchLevelReasonableness: 4/5
 - riskAssessment: 4/5
-- explanationQuality: 5/5
+- explanationQuality: 3/5
 - hallucinationSafety: 5/5
-- recommendedMatchLevel: `none`
-- recommendedRiskLevel: `low`
-- latency: 3034ms
+- criticalFailures: 匹配解释中引用了证据'规则层未找到已确认事实证据'，但该证据不在已确认事实列表中（已确认事实列表为空）。
+- issues: 解释过于简单，未能详细说明为何评估为'none'。; 风险评估为'medium'，但未解释该风险级别与证据缺失之间的具体关联。
+- latency: 3863ms
 
 **硬性失败条件：** 非硬约束无证据时不得标记hard_constraint_gap
 
@@ -230,13 +231,13 @@
 **AI Judge：**
 - passed: true
 - evidenceGrounding: 5/5
-- matchLevelReasonableness: 5/5
+- matchLevelReasonableness: 4/5
 - riskAssessment: 5/5
 - explanationQuality: 5/5
 - hallucinationSafety: 5/5
-- recommendedMatchLevel: `weak`
-- recommendedRiskLevel: `medium`
-- latency: 3208ms
+- issues: matchLevelReasonableness得分4分，因为证据仅显示参与团队项目管理，负责需求整理和流程执行，确实不满足“独立推动”的要求，但“weak”级别的判定略有保守，将其定为“transferable”可能更合理。
+- recommendedMatchLevel: `transferable`
+- latency: 5919ms
 
 **硬性失败条件：** 团队成果直接归个人
 
@@ -270,10 +271,10 @@
 - riskAssessment: 5/5
 - explanationQuality: 4/5
 - hallucinationSafety: 5/5
-- issues: 解释过于简洁，仅陈述了未找到证据的事实，未进一步说明该岗位要求为硬性约束且已确认事实（基本英语阅读能力）不满足此具体要求的逻辑关系。
+- issues: 解释过于简略，未能具体说明与硬性约束要求的差距
 - recommendedMatchLevel: `none`
 - recommendedRiskLevel: `high`
-- latency: 4110ms
+- latency: 4344ms
 
 **硬性失败条件：** 硬约束仅可迁移时必须标记hard_constraint_gap
 
@@ -301,16 +302,15 @@
 - ✅ explanation-structure: 解释结构完整。
 
 **AI Judge：**
-- passed: false
+- passed: true
 - evidenceGrounding: 4/5
-- matchLevelReasonableness: 3/5
-- riskAssessment: 2/5
-- explanationQuality: 3/5
+- matchLevelReasonableness: 4/5
+- riskAssessment: 4/5
+- explanationQuality: 4/5
 - hallucinationSafety: 5/5
-- issues: 风险评估不完整，未指出候选事实中缺乏SQL技能和明确数据分析经验的具体风险，尽管已判定为weak。; 解释中虽提到证据不够充分，但未具体说明候选事实与岗位要求在SQL和数据分析能力上的具体差距。
 - recommendedMatchLevel: `weak`
-- recommendedRiskLevel: `medium`
-- latency: 4820ms
+- recommendedRiskLevel: `low`
+- latency: 2596ms
 
 **硬性失败条件：** 使用未确认事实；引用白名单外事实
 
@@ -337,16 +337,16 @@
 - ✅ match-level-constraint: matchLevel在允许范围内。
 
 **AI Judge：**
-- passed: true
-- evidenceGrounding: 5/5
-- matchLevelReasonableness: 4/5
-- riskAssessment: 5/5
-- explanationQuality: 4/5
-- hallucinationSafety: 5/5
-- issues: 解释中提及‘关键词直接命中≥2’是一个特定的判定规则，但该规则在输入上下文中未明确说明，存在轻微的外部逻辑依赖。
-- recommendedMatchLevel: `strong`
-- recommendedRiskLevel: `low`
-- latency: 2504ms
+- passed: false
+- evidenceGrounding: 3/5
+- matchLevelReasonableness: 2/5
+- riskAssessment: 4/5
+- explanationQuality: 3/5
+- hallucinationSafety: 4/5
+- criticalFailures: matchLevel为strong但证据薄弱，仅有一个事实'负责用户运营数据分析，产出日报'，不足以支撑'strong'级别的匹配。
+- issues: 判定逻辑过于简化，仅基于关键词命中数量，未充分评估证据的深度、具体性和成果。; explanation中'证据充分'的结论与单一、描述性的事实不匹配。
+- recommendedMatchLevel: `weak`
+- latency: 4810ms
 
 **硬性失败条件：** 引用白名单外事实
 
@@ -373,15 +373,7 @@
 - ✅ risk-consistency: 风险约束检查通过。
 - ✅ match-level-constraint: matchLevel在允许范围内。
 
-**AI Judge：**
-- passed: true
-- evidenceGrounding: 5/5
-- matchLevelReasonableness: 5/5
-- riskAssessment: 5/5
-- explanationQuality: 4/5
-- hallucinationSafety: 5/5
-- issues: 解释中'关键词直接命中≥2'的计算逻辑未明确说明，但未影响事实准确性。
-- latency: 2864ms
+**AI Judge：** ❌ 失败 — Provider returned 429.
 
 **硬性失败条件：** stale结果被视为有效
 
@@ -408,17 +400,7 @@
 - ✅ match-level-constraint: matchLevel在允许范围内。
 - ✅ explanation-structure: 解释结构完整。
 
-**AI Judge：**
-- passed: true
-- evidenceGrounding: 4/5
-- matchLevelReasonableness: 5/5
-- riskAssessment: 4/5
-- explanationQuality: 4/5
-- hallucinationSafety: 5/5
-- issues: 证据支持度有限，但匹配解释中已正确标注为'证据不够充分'，风险评估也相应设置了'low_confidence'，整体处理合理。
-- recommendedMatchLevel: `weak`
-- recommendedRiskLevel: `medium`
-- latency: 3597ms
+**AI Judge：** ❌ 失败 — Provider returned 429.
 
 **硬性失败条件：** Provider失败时不得编造匹配结果
 
