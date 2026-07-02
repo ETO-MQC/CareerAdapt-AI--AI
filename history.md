@@ -1,3 +1,76 @@
+## 2026-07-03：阶段E-E1 文本型 PDF 导入与 Profile Builder 衔接
+
+本次目标：
+- 在已完成并验收通过的阶段D基础上，只推进阶段E-E1：文本型 PDF 导入、来源定位、隐私确认、失败兜底和 Profile Builder 草稿衔接。
+- 不进入 OCR、DOCX、登录/云同步、更多模板、付费能力或比赛材料制作。
+
+修改文件：
+- `src/domain/schemas/common.ts`、`src/domain/schemas/importDraft.ts`
+- `src/domain/pdfImport/limits.ts`、`src/domain/pdfImport/text.ts`、`src/domain/pdfImport/validation.ts`、`src/domain/pdfImport/sourceMapping.ts`
+- `src/services/pdf/extractText.ts`
+- `src/domain/mappers/profileDraftMapper.ts`
+- `src/app/profile/ProfileWorkspace.tsx`
+- `src/app/api/ai/structured/route.ts`
+- `src/services/storage/db.ts`、`src/services/storage/repositories.ts`
+- `src/services/security/text.ts`
+- `src/ai/prompts/profileBuilder.ts`
+- `public/pdfjs/**`
+- `tests/unit/pdfImport.test.ts`、`tests/e2e/stageE1PdfImport.spec.ts`、`tests/e2e/stageBFlow.spec.ts`、`tests/fixtures/pdf/*`
+- `artifacts/c1-evaluation.*`、`artifacts/c2-evaluation.*`（评估重跑输出刷新）
+- `eslint.config.mjs`、`package.json`、`pnpm-lock.yaml`
+- `Plan.md`
+
+修改内容：
+- **PDF 文本分层**：明确区分不可变 `extractedPageText`、确定性 `cleanedPageText` 和用户可编辑 `userEditedAiText`；PDF 草稿保存 `sourceTextKind`，用户编辑 AI 输入后必须重新保存草稿并重新隐私确认。
+- **三类 hash 分离**：`fileHash` 保存原始 PDF 字节 SHA-256；`normalizedTextHash` 保存清洗合并文本 hash；`aiInputHash` 保存实际发送给 AI 的文本 hash。重复文件只提示，不替代 `operationId` 幂等。
+- **隐私确认绑定**：Profile 导入草稿和 raw input 记录 `privacyConfirmedAiInputHash`；AI 调用前以当前实际输入计算 hash，确认后改动文本会回到待确认状态。
+- **PDF 校验和提取限制**：MIME/扩展名仅作辅助；空 MIME 或 `application/octet-stream` 在文件头和 PDF.js 解析有效时允许导入并提示；文件头或解析失败时拒绝。新增 8MB、5页、60000字符、text item 总量/单页、单页字符量和提取超时限制；取消或超限时销毁 PDF.js task/document/page。
+- **本地 PDF.js 资源**：PDF.js worker 使用本地包资源；CMap、standard_fonts、wasm 复制到 `public/pdfjs/**` 并通过本地路径加载；不使用公共 CDN，不使用 `disableWorker`。
+- **确定性 source mapping**：新增 `locatePdfSourceQuote`，只由程序在 PDF 页文本中查找 `sourceQuote`；唯一匹配标记 `located` 并生成页码/offset，0 次为 `unlocated`，多次为 `ambiguous`。模型返回的 `sourceSpan` 不再作为 PDF 页码依据。
+- **Provenance 严格校验**：`sourceType=pdf_import` 必须有 `sourceSessionId`、`sourceQuote`、`sourceLocatorStatus`；`located` 必须有页码和 offset；`ambiguous/unlocated` 不允许伪造页码或 locator。
+- **正式事实层保护**：PDF 来源事实只有 `sourceLocatorStatus=located` 且用户确认时才可提交；ambiguous/unlocated 事实在 UI 中不可默认勾选，mapper 也不会写入正式 `CareerProfile`。
+- **用户编辑保护**：用户新增或实质改写、无法在 PDF 页文本唯一定位的内容不会标记为 `pdf_import`；在当前 E1 中不会默认进入正式事实层。
+- **已有 Profile 保护**：当前应用没有真正的多 `CareerProfile` 选择/合并流程；PDF 导入检测到已有正式 Profile 时，只保留导入草稿并提示手动处理，不静默创建第二份正式 Profile，也不覆盖现有 Profile。
+- **敏感数据处理**：不持久化原始 PDF Blob；新增删除 PDF import session 及其 pageTexts 的能力；AI 日志只保存 hash、长度、状态和固定 errorCode，不保存完整简历文本、原始堆栈、本地路径或 API Key。
+- **AI 结构化重试**：服务端结构化 AI 输出在 Schema/语义校验失败时自动重试一次；失败后回到错误/手动分类路径。
+- **测试 fixture**：加入非 Playwright 生成的 Edge headless 中文 PDF fixture 和双栏 PDF fixture；双栏解析显示“版面复杂”警告。
+
+E1a 验证结果：
+- `tests/unit/pdfImport.test.ts` 覆盖 PDF 文件校验、header 拒绝、文本清洗、扫描件/无文本层降级、text item 限制、取消固定错误码、sourceQuote 唯一/多匹配/未匹配、PDF provenance 严格校验、session/pageTexts 删除。
+- `tests/e2e/stageE1PdfImport.spec.ts` 覆盖外部工具生成中文 PDF 的真实浏览器提取、刷新恢复、双栏复杂版面警告和本地 PDF.js worker/CMap 资源路径。
+- E1a 单测 7/7 通过；E1 E2E 3/3 通过。
+
+E1b 验证结果：
+- Profile Builder PDF 输出进入草稿前先做程序 source mapping；只有唯一定位的 quote 可显示为 `located` 并允许确认。
+- 修改 AI 输入后重新要求隐私确认；`aiInputHash` 与实际发送文本一致。
+- 已有正式 `CareerProfile` 时，PDF 草稿提交被阻断并提示手动处理。
+- E1 E2E 场景验证未创建或覆盖已有 CareerProfile。
+
+完整验证结果：
+- `pnpm typecheck` 通过。
+- `pnpm lint` 通过。
+- `pnpm test` 通过：8 个测试文件 / 54 个测试。
+- `pnpm build` 通过，生产 build 无 PDF.js 资源解析警告。
+- `pnpm test:e2e` 通过：30 个 Playwright 测试。
+- `pnpm test:c1:eval` 通过。
+- `pnpm test:c2:eval` 通过。
+
+关键安全结论：
+- 没有发现用户编辑文本被错误标记为 `pdf_import`；无法在 PDF 页文本唯一定位的内容不会作为 `pdf_import` 提交。
+- 没有发现 `sourceQuote` 无法定位仍自动提交的情况；ambiguous/unlocated 在 UI 和 mapper 双层阻断。
+- 没有创建或覆盖已有 `CareerProfile`；已有 Profile 时 PDF 导入仅保留草稿。
+- 没有原始 PDF Blob、完整简历文本或 API Key 进入 AI 日志或错误日志；错误状态保存固定 errorCode/短消息。
+
+遗留问题：
+- OCR、DOCX、多 Profile 合并/选择、比赛材料制作仍按计划后置。
+- 双栏 PDF 的阅读顺序无法可靠恢复时仅提示复杂版面，需要用户人工核对。
+
+下一步：
+1. 人工确认 E1 验收结果。
+2. 单独启动 E2：稳定性补强、关键截图、演示视频、模型与开源组件说明、产品说明书和 PPT。
+
+---
+
 ## 2026-07-02：阶段D-D2.1 双模板预览与 PDF 导出独立验收收口
 
 本次目标：

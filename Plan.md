@@ -30,6 +30,7 @@
 - [x] 阶段C-C2：AI建议与 Fact Guard 完成；JobAdaptationDraft、resume-tailor、规则 Fact Guard、AI fact-guard、单条接受/拒绝/编辑/重新检测/撤销、Dexie v4 事务与迁移测试已覆盖。
 - [x] 阶段D-D1：正式 ResumeBranch、版本历史与多岗位分支完成；未 stale 的 JobAdaptationDraft 可创建 verified 分支并同事务创建首个 ResumeRevision，支持两个岗位分支独立编辑、版本历史、恢复/撤销、syncStatus 更新提示和 legacy_unverified 只读迁移。
 - [x] 阶段D-D2：双模板预览、单页检查与 PDF 导出完成；verified 分支经 ResumeRenderModel 渲染模板A/模板B，支持 A4 实时预览、fits/near_limit/overflow 检测、模板偏好恢复、浏览器打印导出、ExportRecord 幂等记录和 PDF 产物验证；legacy_unverified 不进入正式预览或导出。
+- [x] 阶段E-E1：文本型 PDF 导入与 Profile Builder 衔接完成；区分 extractedPageText/cleanedPageText/userEditedAiText，fileHash/normalizedTextHash/aiInputHash 分离，sourceQuote 由程序确定性定位，ambiguous/unlocated 不进入正式事实层，已有 Profile 时 PDF 草稿不静默创建第二份正式 Profile。
 
 ## MVP交付标准
 
@@ -114,6 +115,11 @@
 
 对应任务：Sprint 2、Sprint 8。
 
+内部检查点：
+
+- [x] E1a 文本型 PDF 本地导入：浏览器本地 PDF.js worker 提取文本，PDF.js worker/CMap/standard_fonts/wasm 均从 `public/pdfjs` 本地加载；校验 8MB、5页、60000字符、text item 数量、单页字符量和提取超时；支持取消、刷新恢复、扫描件/无文本层降级、重复 fileHash 提示、Prompt 注入文字风险提示和双栏复杂版面警告。
+- [x] E1b Profile Builder 衔接：分开保存 `fileHash`、`normalizedTextHash`、`aiInputHash`；隐私确认绑定实际 `aiInputHash`，修改 AI 输入后必须重新确认；AI 输出经 Schema 校验和一次自动重试；PDF `sourceQuote` 由程序在页文本中确定性查找，唯一匹配才标记 `pdf_import`，0次为 `unlocated`、多次为 `ambiguous`；ambiguous/unlocated 不可默认确认或提交；已有正式 `CareerProfile` 时仅保留 PDF 导入草稿并提示手动处理。
+
 ## 补充量化验收指标
 
 - 事实安全：未经用户确认的新增数字、奖项、组织、工具和成果进入最终导出的数量为 0。
@@ -186,13 +192,16 @@
 
 任务清单：
 
-- [ ] 实现文件类型、大小、加密状态校验。
-- [ ] 提取文本型 PDF 的正文和基础段落信息。
-- [ ] 接入或模拟 Profile Builder，将简历文本转为职业母档案草稿。
-- [ ] 使用 Schema 校验模型输出。
-- [ ] 输出不合规时自动重试一次；失败则进入手动分类。
-- [ ] 解析确认页展示原文对照、字段置信度和未分类内容。
-- [ ] 扫描件/OCR 提示后置，不作为 MVP 阻塞。
+- [x] 实现文件类型、大小、加密状态校验；MIME/扩展名仅作辅助，最终以文件头和 PDF.js 解析为准。
+- [x] 提取文本型 PDF 的正文和基础页信息，持久化不可变 `extractedPageText` 与确定性 `cleanedPageText`。
+- [x] 接入 Profile Builder，将 PDF AI 输入转为职业母档案草稿，并支持拒绝外部模型后的手动分类降级。
+- [x] 使用 Schema 校验模型输出，且服务端输出不合规时自动重试一次。
+- [x] 输出不合规或 Provider 失败时进入手动分类/错误状态，不无限重试。
+- [x] 解析确认页展示原文对照、字段置信度、未分类内容和 PDF locator 状态。
+- [x] 扫描件/OCR 提示后置，不作为 MVP 阻塞。
+- [x] PDF `sourceQuote` 页码定位不依赖模型 offset；程序唯一匹配才自动定位，0次标记 `unlocated`，多次标记 `ambiguous`。
+- [x] `pdf_import` provenance 严格校验 sessionId、quote、locatorStatus 和 located 页码/offset；ambiguous/unlocated 不伪造页码且不得默认进入正式事实层。
+- [x] 已有正式 `CareerProfile` 时，PDF 导入仅保留草稿并提示手动处理，不静默创建第二份正式 Profile 或覆盖现有 Profile。
 
 完成定义：
 
@@ -365,29 +374,19 @@
 
 ## 下次开发路线
 
-阶段D-D1 验证已完成（6/6 场景通过），阶段D-D2 已完成，阶段D-D2.1 独立验收收口已完成（16/16 场景通过）。阶段D闭环达到”岗位分支 -> 双模板预览 -> 单页检查 -> 浏览器打印 PDF -> ExportRecord”的 MVP 目标。
+阶段E-E1 已完成并通过全量回归。当前 MVP 已覆盖“文本/文本型PDF导入 -> 职业母档案草稿 -> JD解析 -> 经历匹配 -> AI建议/Fact Guard -> 岗位分支 -> 双模板预览 -> PDF导出”的纵向闭环。
 
-D2.1 验收结果：
-- [x] 场景1：双模板内容一致性（姓名、岗位、经历、技能一致，模板切换不创建新 Revision）。
-- [x] 场景2：模板偏好刷新恢复（选择模板B后刷新仍为B）。
-- [x] 场景3：分支切换清除旧预览状态（切换后预览、overflow 状态均切换）。
-- [x] 场景4：分支编辑后预览同步（编辑保存后预览立即更新，刷新后持久化）。
-- [x] 场景5：恢复与撤销后预览同步（恢复旧版本后编辑区和预览同步回退，撤销后恢复，无 editTexts 缓存残留）。
-- [x] 场景6：旧 Revision 预览阻断导出（修改 IndexedDB 模拟 stale revision，导出被阻止）。
-- [x] 场景7：fits/near_limit 状态与 PDF 导出（状态正确显示，PDF 为 A4 单页）。
-- [x] 场景8：near_limit 状态警告（接近单页上限时显示明确警告）。
-- [x] 场景9：overflow 状态阻断导出（溢出时正式打印被阻止，产生 blocked_overflow 记录）。
-- [x] 场景10：显示与隐藏内容（隐藏的 contentItem 不在预览中显示）。
-- [x] 场景11：rule_only_verified 内容提示（工作台显示 AI 复核未完成提示，PDF 不含内部标签）。
-- [x] 场景12：非法分支阻断（legacy_unverified 分支不能正式导出，页面有明确原因）。
-- [x] 场景13：ExportRecord 幂等（相同 operationId 只产生一条记录）。
-- [x] 场景14：PDF 产物验证（模板A/B 均为 A4 单页，中文可抽取，关键正文一致，视觉结构不同）。
-- [x] 场景15：打印失败后页面不崩溃（window.print 抛错后页面状态保持）。
-- [x] 场景16：页面加载回归。
-- 发现并修复 1 个真实 Bug：`editResumeBranch` 对 visibility-only 编辑误触发 Fact Guard。
-- 发现并修复 1 个测试环境问题：E2E 使用的 pdftotext v4.00 无法提取 CID CJK 字体。
-- 回归测试：typecheck 通过 / lint 通过 / 47 单元测试通过 / build 通过 / 27 E2E 测试通过 / C1 eval 通过 / C2 eval 通过。
-- C2 指标：safeAllowed=6 / safeBlocked=0 / unsafeBlocked=10 / unsafeAllowed=0 / overallQualified=true。
+E1 验收结果：
+- [x] E1a：PDF 校验、文本提取、取消、刷新恢复、扫描件降级、source mapping 测试通过。
+- [x] E1a：外部工具 Edge headless 生成的中文 PDF fixture 可抽取中文文本；双栏 PDF fixture 显示“版面复杂”警告。
+- [x] E1a：PDF.js worker、CMap、standard_fonts、wasm 均本地加载；生产 build 无公共 CDN 或 `disableWorker` 方案。
+- [x] E1b：隐私确认绑定实际 `aiInputHash`；修改 AI 输入后必须重新确认。
+- [x] E1b：用户编辑文本不会被错误标记为 `pdf_import`；只有页文本唯一定位的 `sourceQuote` 才进入 `pdf_import`。
+- [x] E1b：ambiguous/unlocated 事实不能默认勾选或提交到正式事实层。
+- [x] E1b：已有正式 `CareerProfile` 时，PDF 导入只保留草稿并提示手动处理，不创建第二份正式 Profile 或覆盖现有 Profile。
+- [x] 回归测试：typecheck 通过 / lint 通过 / 54 单元测试通过 / build 通过 / 30 E2E 测试通过 / C1 eval 通过 / C2 eval 通过。
 
-1. 人工确认 D2.1 验收结果。
-2. 若继续开发，单独启动阶段E：PDF导入、稳定性和比赛材料；仍不实现 DOCX、OCR、登录、云同步、更多模板或付费能力。
+下一步：
+1. 人工确认 E1 验收结果。
+2. 若继续开发，单独启动 E2：稳定性补强、关键截图、演示视频、模型与开源组件说明、产品说明书和 PPT。
+3. 继续后置 OCR、DOCX、登录、云同步、更多模板、付费能力和模板市场。
