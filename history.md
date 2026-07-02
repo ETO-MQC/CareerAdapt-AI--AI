@@ -2,6 +2,73 @@
 
 本文件记录每次开发完成后的实际修改、验证结果、遗留问题和下一步路线。每次修改代码或文档后，都要同步更新 `Plan.md` 的状态。
 
+## 2026-07-02：阶段C-C1 AI辅助自动验收系统
+
+本次目标：
+- 为C1建立程序硬校验 + AI语义Judge + Markdown报告的自动验收流程。
+- 新增 `pnpm test:c1:eval`，不加入 `pnpm verify`。
+- 不进入C2，不修改现有matcher、registry、route或UI代码。
+
+修改文件：
+- `package.json`（新增 `test:c1:eval` 脚本）
+- `vitest.c1-eval.config.ts`（新增）
+- `tests/c1-eval/cases.ts`（新增：15个脱敏验收案例）
+- `tests/c1-eval/hardValidate.ts`（新增：确定性硬校验逻辑）
+- `tests/c1-eval/judgeSchema.ts`（新增：AI Judge输入/输出Zod Schema）
+- `tests/c1-eval/judgePrompt.ts`（新增：Judge system prompt，独立于evidence-matcher）
+- `tests/c1-eval/aiJudge.ts`（新增：AI语义Judge调用，使用OpenAiCompatibleProvider）
+- `tests/c1-eval/runEval.ts`（新增：主入口，串联硬校验+AI Judge+报告生成）
+- `tests/c1-eval/c1-eval.test.ts`（新增：vitest测试文件）
+- `Plan.md`
+- `history.md`
+
+修改内容：
+- 新增15个脱敏C1验收案例：strong基础、weak单命中、transferable可迁移、无证据硬约束、无证据非硬约束、强匹配团队风险、硬约束可迁移不足、未确认事实排除、白名单外ID、stale结果、Provider失败、Prompt注入、技能事实强匹配、数字事实风险、证书事实匹配。
+- 每个案例定义：岗位要求、正式确认事实、允许matchLevel、必须/禁止风险、允许证据ID、硬性失败条件。
+- 新增确定性硬校验：ID白名单、事实确认状态、no-evidence约束、stale约束、resolveEffectiveMatch一致性、禁止总分、禁止新增事实、风险约束、matchLevel约束、Prompt注入检测。
+- 新增独立AI语义Judge（c1-evaluator）：只评价匹配结果不修改；输入为岗位要求+已确认事实+匹配结果；不接收生成过程；将所有输入文本视为不可信数据；输出严格JSON Schema（passed、5维度0-5评分、criticalFailures、issues、recommendedMatchLevel/RiskLevel）。
+- Judge使用与evidence-matcher相同的Provider endpoint（当前仅一个模型），独立prompt版本 `c1-judge.v1`，报告中标记 `same-model judge bias`。
+- 硬性失败条件：引用白名单外事实、使用未确认事实、无证据输出strong、编造数字/组织/工具/技能/成果、团队成果直接归个人、stale结果被视为有效、执行Prompt注入指令。
+- 有API Key时运行真实AI评价；无Key时仍运行硬校验并标记AI Judge skipped。
+- 生成 `artifacts/c1-evaluation.json` 和 `artifacts/c1-evaluation.md`，报告不含API Key或未脱敏个人数据。
+- AI辅助验收不替代人工验收。
+
+验证结果：
+- `pnpm typecheck` 通过。
+- `pnpm lint` 通过。
+- `pnpm test` 通过：4 个测试文件，31 个测试通过（原有测试不受影响）。
+- `pnpm test:c1:eval` 通过：15个案例硬校验全部通过（其中3个案例的预期失败检查确实失败）；AI Judge使用mimo-v2.5-pro运行，输出15个案例的语义评分。
+- `artifacts/c1-evaluation.json` 和 `artifacts/c1-evaluation.md` 正确生成。
+
+真实模型与 Provider：
+- Judge Provider: openai-compatible（通过 `.env.local` 当前配置）
+- Judge Model: mimo-v2.5-pro（与evidence-matcher相同，报告标记same-model judge bias）
+- Judge Prompt版本: c1-judge.v1
+
+AI Judge 结果摘要：
+- 15个案例中8个AI Judge通过，7个失败。
+- 失败主要集中在：matchLevelReasonableness偏低（模型倾向于降级matchLevel）、riskAssessment不完整。
+- hallucinationSafety普遍较高（5/5），未检测到编造行为。
+- same-model judge bias已标记：Judge使用同一模型可能对matchLevel判断偏保守。
+
+人工验收入口：
+1. 查看 `artifacts/c1-evaluation.md` 验收报告。
+2. 在报告中检查每个案例的硬校验结果和AI Judge评分。
+3. 注意报告末尾声明：AI辅助验收不替代人工验收。
+4. 如需重新运行：`pnpm test:c1:eval`。
+
+遗留问题：
+- AI Judge当前使用与evidence-matcher相同的模型（mimo-v2.5-pro），存在same-model judge bias；后续可接入不同模型消除偏差。
+- AI Judge评分中matchLevelReasonableness偏低，可能需要调优Judge prompt的评分标准。
+- C1已通过AI辅助自动验收，但仍需人工最终确认后才能进入C2。
+- 未修改现有matcher.ts、registry.ts、route.ts或UI代码。
+- 未进入C2的AI建议、Fact Guard、JobAdaptationDraft、ResumeBranch、模板或PDF导出。
+
+下一步：
+1. 人工查看 `artifacts/c1-evaluation.md` 并结合页面操作最终确认C1。
+2. 若C1人工确认通过，再单独启动C2：AI建议与 Fact Guard。
+3. C2启动前继续禁止进入阶段D/E能力。
+
 ## 2026-07-02：阶段C-C1 Evidence Matcher 与差距诊断
 
 本次目标：

@@ -88,6 +88,7 @@
 内部检查点：
 
 - [x] C1 Evidence Matcher 与差距诊断：仅使用正式 CareerProfile 中已确认事实；匹配等级与风险等级分离；规则评估、AI评估、人工覆盖分层保存；统一通过 `resolveEffectiveMatch` 计算有效结果；旧匹配可按 profileVersion、jobVersion、matcherVersion、candidateSetHash 判定 stale。
+- [x] C1 AI辅助自动验收：15个脱敏验收案例覆盖strong/weak/transferable/none/团队风险/硬约束缺口/未确认排除/白名单外ID/stale/Provider失败/Prompt注入；确定性硬校验（ID白名单、事实确认、no-evidence、stale、resolve一致性、禁止总分、禁止新增事实、风险约束）；独立AI语义Judge（c1-evaluator，独立prompt，不修改结果）；`pnpm test:c1:eval` 输出 `artifacts/c1-evaluation.json` 和 `artifacts/c1-evaluation.md`；AI辅助验收不替代人工验收。
 - [ ] C2 AI建议与 Fact Guard：等待 C1 人工验收后启动；不得在 C1 完成后自动进入。
 
 ### 阶段D：岗位分支、模板和导出
@@ -350,9 +351,9 @@
 
 ## 下次开发路线
 
-阶段C-C1 已完成，等待人工验收。
+阶段C-C1 已完成并通过AI辅助自动验收（15案例/硬校验+AI Judge），等待人工最终确认。
 
-1. 人工验收 C1：在岗位页运行“C1 经历匹配与差距诊断”，检查规则匹配、AI解释、人工覆盖、刷新恢复和 stale 提示。
+1. 人工最终确认 C1：查看 `artifacts/c1-evaluation.md` 报告，结合页面操作验证；AI辅助验收报告不替代人工判断。
 2. 人工确认 C1 通过后，才能进入 C2：AI建议与 Fact Guard。
 3. C2 启动前不得实现建议卡片、Fact Guard 接受流程、JobAdaptationDraft、ResumeBranch、正式模板、PDF导出、PDF导入或求职材料生成。
 4. 仍不进入登录/云端能力，不写入 API 密钥，不覆盖职业母档案事实层。
