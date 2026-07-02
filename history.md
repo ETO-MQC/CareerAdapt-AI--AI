@@ -1,3 +1,28 @@
+## 2026-07-02：D1 验证与 editTexts 缓存修复
+
+本次目标：
+- 执行 D1 完整验证：分支隔离、Fact Guard 阻止、版本恢复/撤销、刷新持久化、legacy 只读。
+- 不修改核心业务逻辑，仅修复验证过程中发现的 UI 缓存 bug。
+
+修改文件：
+- `src/app/resume/ResumeWorkspace.tsx`（1 行变更：`replaceBranch` 中清空 `editTexts` 缓存）
+- `tests/e2e/d1-verification.spec.ts`（新增，验证专用，不提交 git）
+- `Plan.md`
+
+修改内容：
+- 新增 D1 验证 E2E 测试，覆盖 6 个场景：双分支创建隔离、单分支编辑隔离、Fact Guard 阻止无证据新增（数字 30%、技能 Python）、revision 0 恢复与撤销、刷新持久化、legacy_unverified 只读。
+- 发现并修复 `ResumeWorkspace.tsx` 中 `replaceBranch()` 未清空 `editTexts` 的 bug：undo/restore 后 `editTexts[itemId]` 仍保留旧编辑文本，导致 textarea 显示缓存值而非恢复后的 `item.text`。修复方式：`replaceBranch` 时调用 `setEditTexts({})`。
+
+验证结果：
+- D1 验证测试：6/6 场景通过（4.5s）。
+- 回归测试：`pnpm test` 47/47 通过；stageD1BranchFlow E2E 通过。
+- 未提交验证测试文件，仅提交 Plan.md 更新和 editTexts 修复。
+
+遗留问题：
+- 无。
+
+---
+
 ## 2026-07-02：阶段D-D2 双模板预览、单页检查与 PDF 导出
 
 本次目标：

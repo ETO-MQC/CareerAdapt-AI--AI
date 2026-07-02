@@ -364,7 +364,17 @@
 
 ## 下次开发路线
 
-阶段D-D2 已完成，阶段D闭环达到“岗位分支 -> 双模板预览 -> 单页检查 -> 浏览器打印 PDF -> ExportRecord”的 MVP 目标。D2 完成后停止，尚未进入阶段E。
+阶段D-D1 验证已完成（6/6 场景通过），阶段D-D2 已完成，阶段D闭环达到”岗位分支 -> 双模板预览 -> 单页检查 -> 浏览器打印 PDF -> ExportRecord”的 MVP 目标。
+
+D1 验证结果：
+- [x] 从两个岗位草稿创建两个分支，分支隔离正常。
+- [x] 修改分支 A，分支 B 不受影响。
+- [x] 手动添加无证据数字（30%）和技能（Python），Fact Guard 阻止保存。
+- [x] 正常修改后恢复旧版本、撤销恢复均正常。
+- [x] 刷新页面后分支和版本历史持久化正常。
+- [x] legacy_unverified 旧分支只读，编辑/保存/撤销/恢复按钮全部 disabled。
+- [x] 修复 editTexts 缓存未清空导致 restore/undo 后 textarea 显示旧值的 bug。
+- 回归测试：47 个单元测试 + stageD1BranchFlow E2E 均通过。
 
 1. 人工验收 D2：在 `/jobs` 创建 C2 草稿，在 `/resume` 创建 verified 分支，切换模板 A/B，检查 `fits/near_limit/overflow` 状态，导出 PDF 并确认文本可复制。
 2. 复核 `artifacts/c1-evaluation.md` 与 `artifacts/c2-evaluation.md`，确认 C1/C2 回归仍通过，C2 指标保持 safeAllowed 6 / safeBlocked 0 / unsafeBlocked 10 / unsafeAllowed 0。
