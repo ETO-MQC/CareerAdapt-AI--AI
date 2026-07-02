@@ -106,6 +106,7 @@
 
 - [x] D1 正式 ResumeBranch、版本历史与多岗位分支：只允许未 stale、非 error 的 `JobAdaptationDraft` 创建 verified 分支；分支只持久化正式事实引用 `factRefs`，不复制 CareerProfile 正式事实层；创建分支与首个 `ResumeRevision` 在同一 Dexie v5 事务中完成；写操作使用 `expectedRevision` + `operationId` 幂等保护；手动文本编辑由 Repository 基于正式 factRefs 重新运行规则 Fact Guard；`ai_failed_rule_kept` 在规则通过且无 high finding 时以 `rule_only_verified` 进入分支并提示未完成 AI 复核；旧占位分支迁移为 `legacy_unverified` 只读保留；恢复/撤销通过不可变追加 revision 链完成，`syncStatusCache` 为派生缓存且不进入 snapshot。
 - [x] D2 模板预览与 PDF 导出：正式 verified `ResumeBranch` 先映射为统一 `ResumeRenderModel`，模板 A/B 只消费 RenderModel；`legacy_unverified`、归档分支、失效引用和 overflow 均阻止正式导出；模板偏好保存在展示配置中，不创建内容 `ResumeRevision`；Dexie v6 `ExportRecord` 记录 `operationId/branchRevision/templateId/exportStatus/overflowStatus/exportedAt` 并按 operationId 幂等；E2E 生成并验证两套模板 PDF 为 A4 单页、中文文本可抽取、无导航按钮。
+- [x] D2.1 双模板预览与 PDF 导出独立验收收口：16 个验收场景全部通过；修复 Fact Guard 对 visibility-only 编辑误触发的 Bug（`repositories.ts`）；修复 E2E 测试中 pdftotext v4.00 无法提取 CID CJK 字体的问题（改用 poppler ≥23.x）；回归测试 typecheck/lint/test(47)/build/test:e2e(27)/c1:eval/c2:eval 全部通过，C2 指标保持 safeAllowed=6/safeBlocked=0/unsafeBlocked=10/unsafeAllowed=0/overallQualified=true。
 
 ### 阶段E：PDF导入、稳定性和比赛材料
 
@@ -364,18 +365,29 @@
 
 ## 下次开发路线
 
-阶段D-D1 验证已完成（6/6 场景通过），阶段D-D2 已完成，阶段D闭环达到”岗位分支 -> 双模板预览 -> 单页检查 -> 浏览器打印 PDF -> ExportRecord”的 MVP 目标。
+阶段D-D1 验证已完成（6/6 场景通过），阶段D-D2 已完成，阶段D-D2.1 独立验收收口已完成（16/16 场景通过）。阶段D闭环达到”岗位分支 -> 双模板预览 -> 单页检查 -> 浏览器打印 PDF -> ExportRecord”的 MVP 目标。
 
-D1 验证结果：
-- [x] 从两个岗位草稿创建两个分支，分支隔离正常。
-- [x] 修改分支 A，分支 B 不受影响。
-- [x] 手动添加无证据数字（30%）和技能（Python），Fact Guard 阻止保存。
-- [x] 正常修改后恢复旧版本、撤销恢复均正常。
-- [x] 刷新页面后分支和版本历史持久化正常。
-- [x] legacy_unverified 旧分支只读，编辑/保存/撤销/恢复按钮全部 disabled。
-- [x] 修复 editTexts 缓存未清空导致 restore/undo 后 textarea 显示旧值的 bug。
-- 回归测试：47 个单元测试 + stageD1BranchFlow E2E 均通过。
+D2.1 验收结果：
+- [x] 场景1：双模板内容一致性（姓名、岗位、经历、技能一致，模板切换不创建新 Revision）。
+- [x] 场景2：模板偏好刷新恢复（选择模板B后刷新仍为B）。
+- [x] 场景3：分支切换清除旧预览状态（切换后预览、overflow 状态均切换）。
+- [x] 场景4：分支编辑后预览同步（编辑保存后预览立即更新，刷新后持久化）。
+- [x] 场景5：恢复与撤销后预览同步（恢复旧版本后编辑区和预览同步回退，撤销后恢复，无 editTexts 缓存残留）。
+- [x] 场景6：旧 Revision 预览阻断导出（修改 IndexedDB 模拟 stale revision，导出被阻止）。
+- [x] 场景7：fits/near_limit 状态与 PDF 导出（状态正确显示，PDF 为 A4 单页）。
+- [x] 场景8：near_limit 状态警告（接近单页上限时显示明确警告）。
+- [x] 场景9：overflow 状态阻断导出（溢出时正式打印被阻止，产生 blocked_overflow 记录）。
+- [x] 场景10：显示与隐藏内容（隐藏的 contentItem 不在预览中显示）。
+- [x] 场景11：rule_only_verified 内容提示（工作台显示 AI 复核未完成提示，PDF 不含内部标签）。
+- [x] 场景12：非法分支阻断（legacy_unverified 分支不能正式导出，页面有明确原因）。
+- [x] 场景13：ExportRecord 幂等（相同 operationId 只产生一条记录）。
+- [x] 场景14：PDF 产物验证（模板A/B 均为 A4 单页，中文可抽取，关键正文一致，视觉结构不同）。
+- [x] 场景15：打印失败后页面不崩溃（window.print 抛错后页面状态保持）。
+- [x] 场景16：页面加载回归。
+- 发现并修复 1 个真实 Bug：`editResumeBranch` 对 visibility-only 编辑误触发 Fact Guard。
+- 发现并修复 1 个测试环境问题：E2E 使用的 pdftotext v4.00 无法提取 CID CJK 字体。
+- 回归测试：typecheck 通过 / lint 通过 / 47 单元测试通过 / build 通过 / 27 E2E 测试通过 / C1 eval 通过 / C2 eval 通过。
+- C2 指标：safeAllowed=6 / safeBlocked=0 / unsafeBlocked=10 / unsafeAllowed=0 / overallQualified=true。
 
-1. 人工验收 D2：在 `/jobs` 创建 C2 草稿，在 `/resume` 创建 verified 分支，切换模板 A/B，检查 `fits/near_limit/overflow` 状态，导出 PDF 并确认文本可复制。
-2. 复核 `artifacts/c1-evaluation.md` 与 `artifacts/c2-evaluation.md`，确认 C1/C2 回归仍通过，C2 指标保持 safeAllowed 6 / safeBlocked 0 / unsafeBlocked 10 / unsafeAllowed 0。
-3. 若继续开发，单独启动阶段E：PDF导入、稳定性和比赛材料；仍不实现 DOCX、OCR、登录、云同步、更多模板或付费能力。
+1. 人工确认 D2.1 验收结果。
+2. 若继续开发，单独启动阶段E：PDF导入、稳定性和比赛材料；仍不实现 DOCX、OCR、登录、云同步、更多模板或付费能力。

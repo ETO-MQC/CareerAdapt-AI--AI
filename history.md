@@ -1,3 +1,46 @@
+## 2026-07-02：阶段D-D2.1 双模板预览与 PDF 导出独立验收收口
+
+本次目标：
+- 以真实用户操作方式独立验收已完D2，主动寻找页面状态、预览一致性、溢出判断、Revision校验和PDF导出中的真实Bug。
+- 不开发新功能，不进入阶段E，不新增第三套模板。
+
+修改文件：
+- `src/services/storage/repositories.ts`（Bug修复：`editResumeBranch` 对 visibility-only 编辑跳过 Fact Guard）
+- `tests/e2e/stageD2ExportFlow.spec.ts`（修复 pdftotext 版本解析，使用 poppler ≥23.x）
+- `tests/e2e/d2-verification.spec.ts`（新增，16个验收场景）
+- `Plan.md`
+
+修改内容：
+- **Bug修复（repositories.ts）**：`editResumeBranch` 原本对所有编辑（包括 visibility-only 和 order-only 变更）都重新运行 Fact Guard。当 C2 建议修改了文本使 `text ≠ originalText` 时，切换可见性会触发 Fact Guard 的"新实体"检测并阻止操作。修复方式：仅在 `edit.text !== undefined && edit.text !== item.text` 时才运行 Fact Guard；visibility-only 编辑保留原有 `guardMode`、`guardStatus` 和 `guardFindings`。
+- **测试修复（stageD2ExportFlow.spec.ts）**：新增 `resolvePopplerBinary` 辅助函数，优先使用 poppler ≥23.x（PyCharm poppler 或 MiKTeX），避免 Git/mingw64 捆绑的 pdftotext v4.00 无法提取 CID CJK 字体导致 PDF 文本验证失败。
+- **新增 D2.1 验收测试**（d2-verification.spec.ts）：16 个场景覆盖双模板内容一致性、模板偏好刷新恢复、分支切换状态清除、编辑后预览同步、恢复/撤销后预览同步、旧 Revision 阻断导出、fits/near_limit/overflow 三态、显示隐藏内容、rule_only_verified 提示、非法分支阻断（legacy_unverified）、ExportRecord 幂等、PDF 产物验证、打印失败后状态保持和 C1/C2/D1 回归。
+
+验证结果：
+- `pnpm typecheck` 通过。
+- `pnpm lint` 通过。
+- `pnpm test` 通过：7 个测试文件 / 47 个测试。
+- `pnpm build` 通过。
+- `pnpm test:e2e` 通过：27 个 Playwright 测试（11 原有 + 16 D2.1 验收）。
+- `pnpm test:c1:eval` 通过，overallQualified=true。
+- `pnpm test:c2:eval` 通过，safeAllowed=6 / safeBlocked=0 / unsafeBlocked=10 / unsafeAllowed=0 / overallQualified=true。
+- PDF 产物验证通过：`test-results/d2v14-classic.pdf` 和 `test-results/d2v14-modern.pdf` 均为 1 页 A4，中文关键文本可抽取，无导航按钮和内部标签。
+
+发现的真实Bug：
+1. **Fact Guard 对 visibility-only 编辑误触发**（`repositories.ts`）：`editResumeBranch` 的 `mutate` 函数对所有编辑（包括仅切换 `visible` 或 `order` 的变更）都重新运行 `runRuleFactGuard`。当 C2 建议已修改文本（`text ≠ originalText`）时，切换可见性会检测到"新实体"并抛出 `branch_edit_fact_guard_blocked`，导致无法隐藏/显示内容项。根因：未区分 text-changing 编辑和 metadata-only 编辑。修复：仅在 `edit.text` 实际变更时才运行 Fact Guard。
+2. **E2E pdftotext 版本问题**（测试环境）：Git/mingw64 捆绑的 pdftotext v4.00（2017）无法正确提取 CID TrueType CJK 字体文本，导致 PDF 验证断言失败。实际 PDF 内容正确（poppler v24.08.0 可提取）。修复：E2E 测试优先使用 poppler ≥23.x 版本。
+
+未进入阶段E，未实现 PDF 导入、OCR、DOCX、登录、云同步、付费或模板市场。
+
+遗留问题：
+- near_limit 与 fits 的阈值依赖字体渲染，在不同机器上可能表现不同（非产品 Bug）。
+- 浏览器打印导出只能记录 `print_invoked`，无法确认用户最终是否保存文件（浏览器限制）。
+
+下一步：
+1. 人工确认 D2.1 验收结果。
+2. 若继续开发，单独启动阶段E：PDF导入、稳定性和比赛材料。
+
+---
+
 ## 2026-07-02：D1 验证与 editTexts 缓存修复
 
 本次目标：
