@@ -1,3 +1,65 @@
+## 2026-07-02：阶段D-D1 正式 ResumeBranch、版本历史与多岗位分支
+
+本次目标：
+- 严格只实现 D1：从未 stale 的 `JobAdaptationDraft` 创建正式 `ResumeBranch`，同事务创建首个 `ResumeRevision`。
+- 支持两个不同岗位分支、分支独立编辑、版本历史、恢复/撤销、母档案与岗位更新提示。
+- 不实现模板、PDF 预览/导出、PDF 导入、求职材料、登录/云同步；完成 D1 后停止。
+
+修改文件：
+- `src/domain/schemas/branch.ts`
+- `src/domain/branch/mapper.ts`（新增）
+- `src/domain/branch/revision.ts`（新增）
+- `src/domain/branch/validation.ts`（新增）
+- `src/services/storage/db.ts`
+- `src/services/storage/repositories.ts`
+- `src/app/jobs/JobsWorkspace.tsx`
+- `src/app/resume/ResumeWorkspace.tsx`
+- `src/app/globals.css`
+- `tests/unit/schema.test.ts`
+- `tests/unit/storage.test.ts`
+- `tests/unit/branch.test.ts`（新增）
+- `tests/e2e/stageD1BranchFlow.spec.ts`（新增）
+- `Plan.md`
+- `history.md`
+- `artifacts/c1-evaluation.json`
+- `artifacts/c1-evaluation.md`
+- `artifacts/c2-evaluation.json`
+- `artifacts/c2-evaluation.md`
+
+修改内容：
+- 将 `ResumeBranch` 从阶段A占位扩展为 D1 正式 Schema：记录 profile/job/source draft/matcher 来源，`revision/currentRevisionId/lifecycleStatus/migrationStatus/syncStatusCache/contentItems`。
+- 新增 `BranchContentItem` 事实引用结构：只持久化 `factRefs`，不重复保存 `sourceFactIds`；事实性内容必须绑定正式确认事实引用。
+- 新增 `ResumeBranchSnapshot`：只保存 `name/lifecycleStatus/contentItems`，不保存 `revision/currentRevisionId/createdAt/updatedAt/syncStatusCache`。
+- 新增 `ResumeRevision` 追加链：首个 created revision 可无 `previousRevisionId`，之后 edit/restore/undo revision 均记录 `previousRevisionId`。
+- 新增 `ResumeBranchOperation` 审计与幂等表，Dexie v5 对 `operationId` 建立数据库级唯一索引 `&operationId`。
+- Dexie 从 v4 升级到 v5，保留阶段A-C数据；旧占位分支迁移为 `migrationStatus=legacy_unverified`，只读保留，不参与正式编辑、版本恢复或后续导出。
+- 新增 D1 Mapper：校验 draft 未 stale、非 error，校验 profile/job 版本、match stale、事实引用存在且已确认；阻断 high risk、`blocked_high_risk`、Fact Guard 未通过和失效事实引用；`ai_failed_rule_kept` 在规则通过且无 high finding 时以 `rule_only_verified` 进入分支。
+- Repository 新增 `createResumeBranchFromDraft`、`listResumeBranches`、`getResumeBranch`、`listResumeRevisions`、`editResumeBranch`、`restoreResumeRevision`、`undoResumeBranch`、`refreshResumeBranchSyncStatus`、`archiveResumeBranch`。
+- 创建分支和首个 revision 在同一 Dexie transaction 中完成；所有写操作使用 `expectedRevision + operationId`；重复 operationId 幂等返回。
+- 手动编辑由 Repository 基于正式 `factRefs` 重新运行规则 Fact Guard，不信任前端 guardResult；编辑、恢复、撤销均不修改 `CareerProfile`、`JobDescription` 或 `JobAdaptationDraft`。
+- 恢复旧版本只创建一个新的 restore revision；撤销统一基于 `previousRevisionId` 链；恢复/撤销后重新计算 `syncStatusCache`。
+- `/jobs` 增加岗位选择器，C1/C2 按 `profileId + selectedJobId` 加载，不在 `/jobs` 创建正式分支。
+- `/resume` 改为正式分支工作台：从 C2 draft 创建分支、选择分支、编辑内容、显示版本历史、恢复、撤销、刷新 syncStatus；`legacy_unverified` 只读展示，`rule_only_verified` 显示 AI 复核未完成提示。
+
+验证结果：
+- `pnpm typecheck` 通过。
+- `pnpm lint` 通过。
+- `pnpm test` 通过：6 个测试文件 / 43 个测试。
+- `pnpm build` 通过。
+- `pnpm test:e2e` 通过：9 个 Playwright 测试。
+- `pnpm test:c1:eval` 通过。
+- `pnpm test:c2:eval` 通过。
+- C2 指标保持：safeAllowed 6 / safeBlocked 0 / unsafeBlocked 10 / unsafeAllowed 0，overallQualified true。
+
+遗留问题：
+- D1 未实现模板、PDF 预览/导出、PDF 导入、求职材料、登录/云同步。
+- D1 未实现字段级自动合并，不自动覆盖分支内容，不覆盖 CareerProfile 正式事实层。
+- 删除前影响提示与删除/归档 UI 未进入本次 D1；Repository 已提供归档入口，未实现批量删除。
+
+下一步：
+1. 人工验收 `/jobs` 两岗位 C1/C2 与 `/resume` 两个正式分支的创建、独立编辑、版本恢复、撤销、syncStatus 提示。
+2. 人工确认 D1 后，再单独启动 D2/Sprint 7：模板预览与 PDF 导出。
+3. 继续后置 PDF 导入、求职材料、登录/云同步，禁止写入 API 密钥，禁止覆盖职业母档案正式事实层。
 # 开发历史
 
 本文件记录每次开发完成后的实际修改、验证结果、遗留问题和下一步路线。每次修改代码或文档后，都要同步更新 `Plan.md` 的状态。

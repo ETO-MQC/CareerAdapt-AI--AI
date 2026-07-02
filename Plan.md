@@ -28,6 +28,7 @@
 - [x] 阶段B.3真实模型联调完成：3/3 项测试通过（health check、profile-builder、jd-analyzer），Provider mimo-v2.5-pro，Schema coerce 层处理字段名差异。
 - [x] 阶段C-C1：Evidence Matcher 与差距诊断完成；规则匹配、AI解释、人工覆盖、stale 判定、Dexie v3 持久化和迁移测试已覆盖。
 - [x] 阶段C-C2：AI建议与 Fact Guard 完成；JobAdaptationDraft、resume-tailor、规则 Fact Guard、AI fact-guard、单条接受/拒绝/编辑/重新检测/撤销、Dexie v4 事务与迁移测试已覆盖。
+- [x] 阶段D-D1：正式 ResumeBranch、版本历史与多岗位分支完成；未 stale 的 JobAdaptationDraft 可创建 verified 分支并同事务创建首个 ResumeRevision，支持两个岗位分支独立编辑、版本历史、恢复/撤销、syncStatus 更新提示和 legacy_unverified 只读迁移；模板、PDF 预览/导出、PDF 导入、求职材料、登录/云同步仍未开始。
 
 ## MVP交付标准
 
@@ -92,13 +93,18 @@
 - [x] C1 AI辅助自动验收：15个脱敏验收案例覆盖strong/weak/transferable/none/团队风险/硬约束缺口/未确认排除/白名单外ID/stale/Provider失败/Prompt注入；确定性硬校验（ID白名单、事实确认、no-evidence、stale、resolve一致性、禁止总分、禁止新增事实、风险约束）；独立AI语义Judge（c1-evaluator，独立prompt，不修改结果）；`pnpm test:c1:eval` 输出 `artifacts/c1-evaluation.json` 和 `artifacts/c1-evaluation.md`；AI辅助验收不替代人工验收。
 - [x] C1.1 AI验收校准与Matcher质量收口：收紧规则Matcher（参与/协助等限定词降级、团队上下文检测、独立性不匹配检测）；改进匹配解释结构（[支持]/[缺失]/[判定]/[风险]）；增加expectedDisposition区分合法/非法案例；Prompt注入区分inputContainsInjection与modelFollowedInjection并清理注入文本；Judge一致性校验（criticalFailures/score阈值）+一次重试；新报告统计positiveCasesPassed/negativeCasesCorrectlyRejected/hardSafetyFailures/semanticCasesPassed/judgeInvalid/overallQualified；所有安全断言通过。
 - [x] C2 AI建议与 Fact Guard：只读取 `resolveEffectiveMatch` 得到且实时未 stale 的匹配；创建 `JobAdaptationDraft` 而非正式 `ResumeBranch`；resume-tailor 只使用 `usedEvidenceRefs` 中的已确认事实；规则 Fact Guard 先执行，再调用 AI fact-guard 复核；支持单条接受、拒绝、编辑后重检、重新检测和撤销，全部经 Dexie 事务和 `expectedRevision`/`operationId` 保护。
-- [x] C2.1 AI建议与 Fact Guard 验收收口：16个脱敏验收案例覆盖合法措辞优化、合法删减、合法排序、新增数字、新增工具/技能、参与变主导、协助变独立、了解变熟练、团队成果变个人、stale阻断、Prompt注入、Provider失败降级、合法新增（证据存在）、编辑后重检、建议范围隔离、复合风险；确定性硬校验（usedEvidenceRefs白名单、事实确认状态、新增实体/数字/技能检测、表达强度升级检测、ownership风险、blocked_high_risk不可接受、stale状态、Provider失败降级）；独立AI语义Judge（c2-judge.v2，输出suggestionSafe/actualDisposition/dispositionCorrect/findingsComplete/evidenceGrounded/scopeIsolationSafe/passed，只评价Fact Guard和建议安全性，不修改建议）；混淆矩阵（safeAllowed/safeBlocked/unsafeBlocked/unsafeAllowed）证明Fact Guard价值；工作流验证（accept/reject/edit-recheck/revoke、expectedRevision/operationId幂等、scope隔离：建议只修改JobAdaptationDraft不修改CareerProfile不创建ResumeBranch）；`pnpm test:c2:eval` 输出 `artifacts/c2-evaluation.json` 和 `artifacts/c2-evaluation.md`；不加入 `pnpm verify`；AI辅助验收不替代人工验收。
+- [x] C2.1 AI建议与 Fact Guard 验收收口：16个脱敏验收案例覆盖合法措辞优化、合法删减、合法排序、新增数字、新增工具/技能、参与变主导、协助变独立、了解变熟练、团队成果变个人、stale阻断、Prompt注入、Provider失败降级、合法新增（证据存在）、编辑后重检、建议范围隔离、复合风险；确定性硬校验（usedEvidenceRefs白名单、事实确认状态、新增实体/数字/技能检测、表达强度升级检测、ownership风险、blocked_high_risk不可接受、stale状态、Provider失败降级）；独立AI语义Judge（c2-judge.v2，只评价Fact Guard和建议安全性，不修改建议）；工作流验证（accept/reject/edit-recheck/revoke、expectedRevision/operationId幂等、scope隔离：建议只修改JobAdaptationDraft不修改CareerProfile不创建ResumeBranch）；`pnpm test:c2:eval` 输出 `artifacts/c2-evaluation.json` 和 `artifacts/c2-evaluation.md`；不加入 `pnpm verify`；AI辅助验收不替代人工验收。
 
 ### 阶段D：岗位分支、模板和导出
 
 目标：创建两个岗位分支，保存不同内容选择和排序，切换两套模板，一页预览，并导出两份 PDF。
 
 对应任务：Sprint 6、Sprint 7。分支同步只做更新提示和手动同步。
+
+内部检查点：
+
+- [x] D1 正式 ResumeBranch、版本历史与多岗位分支：只允许未 stale、非 error 的 `JobAdaptationDraft` 创建 verified 分支；分支只持久化正式事实引用 `factRefs`，不复制 CareerProfile 正式事实层；创建分支与首个 `ResumeRevision` 在同一 Dexie v5 事务中完成；写操作使用 `expectedRevision` + `operationId` 幂等保护；手动文本编辑由 Repository 基于正式 factRefs 重新运行规则 Fact Guard；`ai_failed_rule_kept` 在规则通过且无 high finding 时以 `rule_only_verified` 进入分支并提示未完成 AI 复核；旧占位分支迁移为 `legacy_unverified` 只读保留；恢复/撤销通过不可变追加 revision 链完成，`syncStatusCache` 为派生缓存且不进入 snapshot。
+- [ ] D2 模板预览与 PDF 导出：尚未开始。
 
 ### 阶段E：PDF导入、稳定性和比赛材料
 
@@ -261,19 +267,20 @@
 
 ## Sprint 6：岗位分支、版本历史与撤销
 
-状态：`[ ]`
+状态：`[~]`
 
 目标：同一职业母档案可以保存多个岗位分支，每个分支独立维护版本。
 
 任务清单：
 
-- [ ] 实现 `ResumeBranch` 创建、命名、复制、删除前影响提示。
-- [ ] 分支引用母档案 Experience ID，不复制事实层。
-- [ ] 分支保存岗位专属选择、排序、表达稿、模板配置。
-- [ ] 创建分支时记录母档案版本号。
-- [ ] 实现 `ResumeRevision` 快照。
-- [ ] 实现撤销/恢复。
-- [ ] 母档案事实更新后只提示“母档案已有更新”，用户手动选择重新生成或同步。
+- [x] 实现正式 `ResumeBranch` 创建与命名；旧占位分支迁移为 `legacy_unverified` 只读保留。
+- [x] 分支引用母档案 Experience/Fact/Skill/Certificate ID，不复制正式事实层。
+- [x] 分支保存岗位专属内容选择、排序、显示状态和表达文本；模板配置未进入 D1。
+- [x] 创建分支时记录母档案版本号、岗位版本、源 `JobAdaptationDraft` 和草稿 revision。
+- [x] 实现 `ResumeRevision` 快照，snapshot 只保存可恢复业务内容，不保存版本控制元数据或 `syncStatusCache`。
+- [x] 实现撤销/恢复；除首个创建 revision 外均记录 `previousRevisionId`，恢复旧版本只追加一个 restore revision。
+- [x] 母档案事实或岗位更新后只刷新 `syncStatusCache` 并提示，不自动覆盖分支内容。
+- [ ] 删除前影响提示与删除/归档 UI 后续收口；D1 已提供 Repository 归档入口但未实现批量删除或删除 UI。
 - [>] 字段级自动合并、复杂冲突检测、双向同步后置。
 
 完成定义：
@@ -356,9 +363,9 @@
 
 ## 下次开发路线
 
-阶段C-C2.1 已完成，等待人工验收后再进入阶段D。
+阶段D-D1 已完成，等待人工验收后再决定是否进入 D2/Sprint 7。模板、PDF 预览/导出、PDF 导入、求职材料、登录/云同步均未开始。
 
-1. 人工验收 C2.1：查看 `artifacts/c2-evaluation.md`，确认16个案例全部通过；在 `/jobs` 依次验证 C1 匹配、C2 草稿创建、建议生成、Fact Guard、单条接受/拒绝/编辑后重检/重新检测/撤销。
-2. 查看 `artifacts/c1-evaluation.md`，确认 C2.1 开发后 C1/C1.1 安全指标仍保持通过；AI辅助验收报告不替代人工判断。
-3. C2.1 人工确认通过后，再进入阶段D：正式 `ResumeBranch`、版本历史、模板预览和 PDF 导出。
-4. 阶段D启动前仍不进入 PDF 导入、求职材料、登录/云端能力，不写入 API 密钥，不覆盖职业母档案事实层。
+1. 人工验收 D1：在 `/jobs` 为两个不同岗位分别运行 C1/C2，在 `/resume` 从 C2 草稿创建两个正式分支，验证独立编辑、版本历史、恢复、撤销、syncStatus 提示和 `legacy_unverified` 只读行为。
+2. 复核 `artifacts/c1-evaluation.md` 与 `artifacts/c2-evaluation.md`，确认 C1/C2 回归仍通过，C2 指标保持 safeAllowed 6 / safeBlocked 0 / unsafeBlocked 10 / unsafeAllowed 0。
+3. D1 人工确认通过后，再单独启动 D2/Sprint 7：模板预览与 PDF 导出。
+4. 进入 D2 前仍不实现 PDF 导入、求职材料、登录/云端能力，不写入 API 密钥，不覆盖 CareerProfile 正式事实层。
