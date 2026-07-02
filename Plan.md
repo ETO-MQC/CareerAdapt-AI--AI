@@ -26,7 +26,8 @@
 - [x] 阶段B：职业母档案与 JD 解析工程实现。
 - [x] 阶段B验收收口：真实模型联调通过（mimo-v2.5-pro via openai-compatible）、E2E 覆盖页面流程、幂等提交、revision 冲突、手动降级；coerce 层处理模型字段名差异；所有验证命令通过。
 - [x] 阶段B.3真实模型联调完成：3/3 项测试通过（health check、profile-builder、jd-analyzer），Provider mimo-v2.5-pro，Schema coerce 层处理字段名差异。
-- [x] 阶段C-C1：Evidence Matcher 与差距诊断完成；规则匹配、AI解释、人工覆盖、stale 判定、Dexie v3 持久化和迁移测试已覆盖；等待人工验收后才能进入 C2。
+- [x] 阶段C-C1：Evidence Matcher 与差距诊断完成；规则匹配、AI解释、人工覆盖、stale 判定、Dexie v3 持久化和迁移测试已覆盖。
+- [x] 阶段C-C2：AI建议与 Fact Guard 完成；JobAdaptationDraft、resume-tailor、规则 Fact Guard、AI fact-guard、单条接受/拒绝/编辑/重新检测/撤销、Dexie v4 事务与迁移测试已覆盖。
 
 ## MVP交付标准
 
@@ -90,7 +91,7 @@
 - [x] C1 Evidence Matcher 与差距诊断：仅使用正式 CareerProfile 中已确认事实；匹配等级与风险等级分离；规则评估、AI评估、人工覆盖分层保存；统一通过 `resolveEffectiveMatch` 计算有效结果；旧匹配可按 profileVersion、jobVersion、matcherVersion、candidateSetHash 判定 stale。
 - [x] C1 AI辅助自动验收：15个脱敏验收案例覆盖strong/weak/transferable/none/团队风险/硬约束缺口/未确认排除/白名单外ID/stale/Provider失败/Prompt注入；确定性硬校验（ID白名单、事实确认、no-evidence、stale、resolve一致性、禁止总分、禁止新增事实、风险约束）；独立AI语义Judge（c1-evaluator，独立prompt，不修改结果）；`pnpm test:c1:eval` 输出 `artifacts/c1-evaluation.json` 和 `artifacts/c1-evaluation.md`；AI辅助验收不替代人工验收。
 - [x] C1.1 AI验收校准与Matcher质量收口：收紧规则Matcher（参与/协助等限定词降级、团队上下文检测、独立性不匹配检测）；改进匹配解释结构（[支持]/[缺失]/[判定]/[风险]）；增加expectedDisposition区分合法/非法案例；Prompt注入区分inputContainsInjection与modelFollowedInjection并清理注入文本；Judge一致性校验（criticalFailures/score阈值）+一次重试；新报告统计positiveCasesPassed/negativeCasesCorrectlyRejected/hardSafetyFailures/semanticCasesPassed/judgeInvalid/overallQualified；所有安全断言通过。
-- [ ] C2 AI建议与 Fact Guard：等待 C1 人工验收后启动；不得在 C1 完成后自动进入。
+- [x] C2 AI建议与 Fact Guard：只读取 `resolveEffectiveMatch` 得到且实时未 stale 的匹配；创建 `JobAdaptationDraft` 而非正式 `ResumeBranch`；resume-tailor 只使用 `usedEvidenceRefs` 中的已确认事实；规则 Fact Guard 先执行，再调用 AI fact-guard 复核；支持单条接受、拒绝、编辑后重检、重新检测和撤销，全部经 Dexie 事务和 `expectedRevision`/`operationId` 保护。
 
 ### 阶段D：岗位分支、模板和导出
 
@@ -236,24 +237,26 @@
 
 ## Sprint 5：Resume Tailor、AI建议卡片与 Fact Guard
 
-状态：`[ ]`
+状态：`[x]`
 
 目标：生成可解释修改建议，用户可以接受、拒绝、编辑，新增事实会被拦截。
 
 任务清单：
 
-- [ ] 定义建议类型：重写、补充、删减、排序、风险、追问。
-- [ ] 实现建议卡片字段：原文、建议、修改原因、岗位依据、事实依据、新增事实、风险等级、状态。
-- [ ] 实现接受、部分接受、拒绝、手动编辑。
-- [ ] 实现 Fact Guard：新增数字、组织、奖项、岗位、工具、成果自动标记。
-- [ ] 高风险建议禁止批量接受。
-- [ ] 所有建议作用于岗位分支草稿，不直接覆盖母档案事实。
+- [x] 定义建议类型：`rewrite`、`remove_or_shorten`、`reorder`、`risk_warning`、`follow_up_question`。
+- [x] 实现建议卡片字段：原文、建议、修改原因、岗位依据、事实依据、Fact Guard 结果、风险等级、状态、编辑文本。
+- [x] 实现单条接受、拒绝、编辑后重新检测、重新检测和撤销；不实现批量接受。
+- [x] 实现 Fact Guard：新增数字、学校/组织/公司/岗位、工具/技能、奖项/证书/成果、参与到负责、协助到独立、了解到熟练/精通、团队成果到个人成果自动标记。
+- [x] 高风险或 `blocked_high_risk` 建议禁止接受。
+- [x] 所有建议只作用于 `JobAdaptationDraft`，不直接覆盖职业母档案正式事实。
 
 完成定义：
 
 - 至少生成 3 类建议。
 - 每条建议有原因、依据和风险标记。
 - 未确认新事实不会进入正式简历预览或导出。
+- stale 匹配禁止生成或应用建议，必须返回 C1 重跑。
+- 建议状态更新、草稿文本修改和快照保存使用 Dexie 事务，重复 `operationId` 不重复应用。
 
 ## Sprint 6：岗位分支、版本历史与撤销
 
@@ -352,9 +355,9 @@
 
 ## 下次开发路线
 
-阶段C-C1 已完成并通过AI辅助自动验收校准（C1.1），等待人工最终确认。
+阶段C-C2 已完成，等待人工验收后再进入阶段D。
 
-1. 人工最终确认 C1/C1.1：查看 `artifacts/c1-evaluation.md` 报告，结合页面操作验证；AI辅助验收报告不替代人工判断。
-2. 人工确认 C1 通过后，才能进入 C2：AI建议与 Fact Guard。
-3. C2 启动前不得实现建议卡片、Fact Guard 接受流程、JobAdaptationDraft、ResumeBranch、正式模板、PDF导出、PDF导入或求职材料生成。
-4. 仍不进入登录/云端能力，不写入 API 密钥，不覆盖职业母档案事实层。
+1. 人工验收 C2：在 `/jobs` 依次验证 C1 匹配、C2 草稿创建、建议生成、Fact Guard、单条接受/拒绝/编辑后重检/重新检测/撤销。
+2. 查看 `artifacts/c1-evaluation.md`，确认 C2 开发后 C1/C1.1 安全指标仍保持通过；AI辅助验收报告不替代人工判断。
+3. C2 人工确认通过后，再进入阶段D：正式 `ResumeBranch`、版本历史、模板预览和 PDF 导出。
+4. 阶段D启动前仍不进入 PDF 导入、求职材料、登录/云端能力，不写入 API 密钥，不覆盖职业母档案事实层。

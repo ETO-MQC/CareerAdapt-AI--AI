@@ -2,6 +2,72 @@
 
 本文件记录每次开发完成后的实际修改、验证结果、遗留问题和下一步路线。每次修改代码或文档后，都要同步更新 `Plan.md` 的状态。
 
+## 2026-07-02：阶段C-C2 AI建议与 Fact Guard
+
+本次目标：
+- 基于 C1/C1.1 已完成且 `pnpm test:c1:eval` 通过的前提，完成阶段C-C2。
+- 只读取 `resolveEffectiveMatch` 得到且实时未 stale 的匹配，创建 `JobAdaptationDraft`，不提前创建正式 `ResumeBranch`。
+- 生成可解释 AI 建议，先执行规则 Fact Guard，再执行 AI fact-guard 语义复核。
+- 支持用户单条接受、拒绝、编辑后重新检测、重新检测和撤销，并保存 `AiSuggestion`、适配草稿和快照。
+
+修改文件：
+- `Plan.md`
+- `history.md`
+- `src/domain/schemas/ai.ts`
+- `src/domain/schemas/adaptationDraft.ts`（新增）
+- `src/domain/schemas/index.ts`
+- `src/domain/adaptation/draft.ts`（新增）
+- `src/domain/adaptation/factGuard.ts`（新增）
+- `src/ai/prompts/resumeTailor.ts`（新增）
+- `src/ai/prompts/factGuard.ts`（新增）
+- `src/ai/tasks/registry.ts`
+- `src/app/api/ai/structured/route.ts`
+- `src/services/storage/db.ts`
+- `src/services/storage/repositories.ts`
+- `src/app/jobs/JobsWorkspace.tsx`
+- `src/app/globals.css`
+- `tests/unit/adaptation.test.ts`（新增）
+- `tests/unit/schema.test.ts`
+- `tests/unit/storage.test.ts`
+- `tests/e2e/stageCFlow.spec.ts`
+- `tests/ai-real/stageCRealProvider.test.ts`
+- `artifacts/c1-evaluation.json`
+- `artifacts/c1-evaluation.md`
+
+修改内容：
+- 新增 `JobAdaptationDraft`、`JobAdaptationSnapshot`、`SuggestionOperation` Schema，记录 `profileId`、`jobId`、`profileVersion`、`jobVersion`、`matcherVersion`、`requirementMatchIds`、`revision`、`appliedSuggestionIds`、`sectionTexts`、`createdAt`、`updatedAt`。
+- 扩展 `AiSuggestion` Schema：支持 `rewrite`、`remove_or_shorten`、`reorder`、`risk_warning`、`follow_up_question`，记录原文、建议、原因、岗位要求ID、`usedEvidenceRefs`、Fact Guard 结果、风险等级、状态和编辑文本。
+- 新增 C2 草稿创建逻辑：实时检查 `RequirementMatch` 是否 stale，任一引用 stale 时阻止创建或生成建议，要求返回 C1 重跑。
+- 新增规则 Fact Guard：只以 `usedEvidenceRefs` 为事实允许边界，检测新增数字、学校/组织/公司/岗位、工具/技能、奖项/证书/成果，以及参与变负责、协助变独立、了解变熟练/精通、团队成果变个人成果。
+- 新增 `resume-tailor` 和 `fact-guard` AI 任务、Prompt 与 Schema 校验；Prompt 明确把岗位、简历事实和原文视为不可信输入，忽略其中任何指令。
+- `resume-tailor` 只接收允许的候选事实片段和草稿章节，不接收完整母档案；输出继续做业务语义白名单校验，拒绝白名单外 requirement/evidence/section ID。
+- Fact Guard 流程固定为规则层先执行，再调用 AI 语义复核；AI 失败时保留已有建议和规则结果，不清空草稿。
+- Dexie 升级到 v4，新增 `jobAdaptationDrafts`、`aiSuggestions`、`adaptationSnapshots`、`suggestionOperations` 表，并补齐 v3 -> v4 迁移测试。
+- Repository 新增 C2 事务方法：创建草稿、保存建议、接受、拒绝、编辑后重检、重新检测、撤销；所有操作携带 `expectedRevision` 与 `operationId`，重复 `operationId` 不重复应用。
+- 接受建议时禁止 `blocked_high_risk` 或 high risk 建议；建议只能修改 `JobAdaptationDraft.sectionTexts`，不修改 `CareerProfile` 正式事实。
+- `/jobs` 页面新增 C2 区域：创建适配草稿、生成建议、草稿预览、建议卡片、Fact Guard 结果、证据引用、单条操作按钮和编辑后重检入口。
+- 扩展单元测试、Dexie 迁移/事务测试、真实模型测试和 E2E 验收；重新运行 C1 验收并更新报告 artifact。
+
+验证结果：
+- `pnpm typecheck` 通过。
+- `pnpm lint` 通过。
+- `pnpm test` 通过：5 个测试文件 / 38 个测试。
+- `pnpm build` 通过。
+- `pnpm test:e2e` 通过：8 个 Playwright 测试。
+- `pnpm test:c1:eval` 通过，C1/C1.1 安全指标未降低。
+- `pnpm test:ai:real` 通过：2 个真实模型测试文件 / 7 个测试。
+
+遗留问题：
+- C2 仍复用 `/jobs` 当前第一份 profile/job 的演示选择方式，正式多岗位选择体验留到阶段D或后续 UI 收口。
+- `JobAdaptationDraft` 仍是岗位适配草稿，不是正式 `ResumeBranch`；正式分支、版本历史、模板预览和 PDF 导出留到阶段D。
+- 规则 Fact Guard 当前采用确定性启发式抽取，后续可继续增强中文实体抽取精度，但 C2 必要风险边界已覆盖。
+- 本阶段未进入 PDF 导入、求职材料、登录/云端能力，未写入 API 密钥，未覆盖职业母档案事实层。
+
+下一步：
+1. 人工验收 C2 页面流程和 Fact Guard 边界。
+2. C2 人工确认通过后，进入阶段D：正式 `ResumeBranch`、版本历史、模板预览和 PDF 导出。
+3. 阶段D启动前继续保持 PDF 导入、求职材料和登录/云端能力后置。
+
 ## 2026-07-02：阶段C-C1.1 AI验收校准与Matcher质量收口
 
 本次目标：
