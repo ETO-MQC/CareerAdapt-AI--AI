@@ -28,6 +28,23 @@ V1可以生成 verified ResumeBranch 并预览/导出，但用户不能在简历
 - `unsafeAllowed=0`。
 - `docs/MVP_V1_HANDOFF.md` 已确认。
 
+## 4.1 G0a硬约束
+
+- G0a不持久化ResumeDocument，不新增Dexie表，不升级Dexie v8。ResumeDocument仅作为由当前ResumeBranch和currentRevision派生的编辑视图模型。
+- ResumeBranch/ResumeRevision继续作为唯一内容事实来源；不建立第二套内容Revision系统。
+- 所有文本保存继续复用现有 `editResumeBranch`、`expectedRevision`、`operationId`、事务和Fact Guard路径。
+- Mapper映射全部contentItem，不直接丢弃隐藏或暂不可渲染的内容项；每个block明确 `visible`、`renderable`、`editable` 和 `guardStatus`。
+- 正式模板只渲染 `visible && renderable` 的内容。
+- 模板A和模板B必须使用统一稳定内容标识：`contentItemId` 或等价ID；不得为两个模板分别实现两套编辑状态和保存逻辑。
+- 编辑只允许作用于当前 `currentRevision`。旧Revision、`legacy_unverified`、`archived`、`invalid_reference` 和 revision不一致状态必须禁止编辑。
+- 保存时发生 `expectedRevision` 冲突不得静默覆盖。
+- 双击只是快捷入口；同时支持选中后的编辑按钮、Enter/F2进入、Escape取消、Ctrl/Cmd+Enter保存。
+- G0a只使用明确保存和取消，不实现自动保存、失焦保存或防抖后台Revision。
+- 分支切换、Revision变化、恢复、撤销、保存成功和离开编辑模式时，必须清除本地编辑草稿、选中状态、错误状态和pending operationId。
+- 模板切换不得创建内容Revision。
+- 编辑UI必须与导出层隔离；选中边框、编辑按钮、textarea、错误提示和编辑工具栏不得出现在PDF中。
+- 如果实现过程中发现必须新增持久化ResumeDocument表、重构V1 Revision系统或引入复杂编辑器依赖，立即停止并报告，不得自行扩大G0a范围。
+
 ## 5. 用户流程
 
 1. 用户打开 `/resume`。
@@ -63,30 +80,29 @@ ResumeDocument
 
 ## 7. Schema变化
 
-G0a可以先新增最小Schema，不改V1既有Schema语义。若决定持久化 `ResumeDocument`，必须单独升级Dexie并写迁移测试；否则先作为Mapper输出的内存模型。
+G0a只允许新增或定义派生视图模型类型，不持久化 `ResumeDocument`，不新增Dexie表，不升级Dexie v8，不改变V1既有Schema语义。
 
 ## 8. Dexie迁移
 
-推荐G0a先不新增Dexie表。若必须新增，使用v8，新增表必须幂等，不删除V1表，迁移失败不影响V1。
+G0a不执行Dexie迁移。若发现必须新增持久化表，停止并报告。
 
 ## 9. Mapper
 
-新增 `mapResumeBranchToResumeDocument`：
+新增 `mapBranchToResumeDocument`：
 
 - 输入 verified ResumeBranch、CareerProfile、JobDescription、当前模板偏好。
-- 拒绝 legacy_unverified、archived、invalid_reference。
+- 对 `legacy_unverified`、`archived`、`invalid_reference` 标记为不可编辑；正式编辑入口必须拒绝。
 - 保留factRefs、guardStatus、sourceTrace。
-- 只映射 visible 且安全的内容。
+- 映射全部contentItem，并明确 `visible`、`renderable`、`editable`、`guardStatus`；模板只渲染 `visible && renderable` 内容。
 
 ## 10. Repository
 
-新增或扩展：
+G0a不新增第二套内容保存Repository。允许新增派生视图读取/helper，但文本保存必须复用现有内容写路径：
 
-- `getResumeDocumentForBranch(branchId)`。
-- `editResumeDocumentBlock({ branchId, blockId, text, expectedRevision, operationId })`。
-- `undoResumeDocumentEdit(...)` 可复用 `undoResumeBranch`。
-
-文本编辑必须调用现有 `editResumeBranch` 或等价路径，继续运行Fact Guard。
+- 派生视图读取：从当前 `ResumeBranch/currentRevision` 即时映射，不持久化。
+- 文本保存：调用 `editResumeBranch({ branchId, expectedRevision, operationId, edits })`。
+- 撤销：复用 `undoResumeBranch`。
+- 冲突：`expectedRevision` 不一致时抛出/展示冲突错误，不静默覆盖。
 
 ## 11. 页面变化
 
@@ -98,6 +114,8 @@ G0a可以先新增最小Schema，不改V1既有Schema语义。若决定持久化
 - 保存/取消按钮。
 - Fact Guard错误展示。
 - 撤销入口复用现有撤销。
+- 编辑按钮和 Enter/F2 快捷键。
+- Escape取消，Ctrl/Cmd+Enter保存。
 
 不改首页、profile、jobs业务流程。
 
@@ -105,8 +123,9 @@ G0a可以先新增最小Schema，不改V1既有Schema语义。若决定持久化
 
 - selection：`branchId + revision + blockId`。
 - draftText：同样带revision key。
-- 保存成功、分支切换、恢复版本、撤销后清理本地草稿。
+- 保存成功、分支切换、Revision变化、恢复版本、撤销、离开编辑模式后清理本地草稿、选中、错误和pending operationId。
 - 模板切换不清空内容，只重新渲染。
+- 不实现自动保存、失焦保存或防抖后台Revision。
 
 ## 13. Fact Guard
 
@@ -128,16 +147,26 @@ G0a可以先新增最小Schema，不改V1既有Schema语义。若决定持久化
 
 - Mapper拒绝legacy/archived/invalid_reference。
 - Mapper保留factRefs和guard状态。
+- Mapper映射隐藏或不可渲染contentItem，并正确标记visible/renderable/editable。
 - 合法编辑创建revision。
 - 高风险编辑被Fact Guard阻断。
 - 分支切换清理草稿key。
+- 模板切换不创建Revision。
+- 相同operationId不重复创建Revision。
+- expectedRevision冲突阻止覆盖。
 
 E2E：
 
 - 打开verified分支，选中区块。
 - 双击编辑合法文本，保存后预览同步。
+- 选中后编辑按钮、Enter/F2、Escape、Ctrl/Cmd+Enter可用。
 - 高风险新增数字/技能被阻断。
 - 撤销后文本恢复，编辑缓存不残留。
+- 模板A/B编辑内容一致。
+- 分支隔离。
+- 旧Revision不可编辑。
+- legacy/archived/invalid_reference不可编辑。
+- 编辑控件不进入PDF。
 - 导出入口仍可用。
 
 回归：
@@ -164,6 +193,7 @@ E2E：
 ## 18. 停止条件
 
 - C2 `unsafeAllowed` 不为0。
+- 发现必须新增持久化ResumeDocument表、升级Dexie、重构V1 Revision系统或引入复杂编辑器依赖。
 - 合法编辑后预览不同步。
 - 撤销后出现旧草稿残留。
 - 编辑一个分支影响另一个分支。

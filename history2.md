@@ -10,11 +10,11 @@
 
 ## 当前摘要
 
-- 当前阶段：V2规划体系初始化，尚未开始V2业务编码。
-- 当前已完成：V1基线交接、V1任务迁移审计、V2文档入口、V2设计文档、首个Goal设计。
+- 当前阶段：V2-G0a 已完成，Resume Studio 最小垂直切片可运行。
+- 当前已完成：V1基线交接、V1任务迁移审计、V2文档入口、V2设计文档、首个Goal设计、G0a派生编辑视图模型、预览区直接编辑、模板A/B统一内容标识、G0a回归测试。
 - 当前数据库版本：Dexie v7，未执行V2迁移。
-- 当前下一步：人工审核 `docs/v2/FIRST_GOAL.md` 和 `plan2.md`。
-- 当前阻塞：V2编码前需要确认 V1 稳定检查点、启动说明和首个Goal范围。
+- 当前下一步：启动 V2-G1 前先确认范围；继续保留 V1 稳定检查点、启动说明和 Demo 材料收尾。
+- 当前阻塞：无 G0a 代码阻塞；完整 E2E 既有 flaky、C1/C2 全量评估仍待下一轮按需重跑。
 
 ## 开发记录模板
 
@@ -37,6 +37,60 @@
 下一步：
 
 ## 开发记录
+
+### 2026-07-03：V2-G0a Resume Studio最小垂直切片
+
+目标：
+
+- 在已完成的 V1 MVP 上实现第一个 V2 开发Goal：可在正式简历预览区选择区块、显式编辑、保存、撤销，并保持模板和导出稳定。
+- 严格遵守用户补充的 G0a 硬约束：不持久化 ResumeDocument、不新增 Dexie 表、不升级 Dexie v8、不建立第二套 Revision 系统。
+
+修改文件：
+
+- 文档：`docs/v2/FIRST_GOAL.md`、`RESUME_STUDIO_SPEC.md`、`EDITOR_INTERACTION.md`、`DOMAIN_AND_ARCHITECTURE.md`、`plan2.md`、`history2.md`。
+- 新增派生视图模型：`src/domain/resumeDocument/mapper.ts`。
+- 简历预览与模板：`src/domain/resumeRender/mapper.ts`、`src/components/resume/A4ResumePreview.tsx`、`src/components/resume/templates/templateRegistry.tsx`、`src/app/globals.css`。
+- 工作台与Repository：`src/app/resume/ResumeWorkspace.tsx`、`src/services/storage/repositories.ts`。
+- 测试：`tests/unit/resumeDocument.test.ts`、`tests/unit/branch.test.ts`、`tests/e2e/stageV2G0aResumeStudio.spec.ts`。
+
+核心变化：
+
+- `ResumeDocument` 仅作为由当前 `ResumeBranch/currentRevision` 派生的编辑视图模型，Mapper 映射全部 contentItem，并显式标记 `visible`、`renderable`、`editable`、`guardStatus`。
+- 模板A/B统一使用 `contentItemId/sourceItemId`，预览层支持单击选中、编辑按钮、双击、Enter/F2、Escape、Ctrl/Cmd+Enter。
+- 文本保存复用 `editResumeBranch`、`expectedRevision`、`operationId`、事务与 Fact Guard；冲突时显示错误，不静默覆盖。
+- 分支切换、revision变化、撤销、恢复、保存成功和退出编辑模式会清理草稿、选中、错误和 pending operationId。
+- 编辑 UI 使用 `.no-print` 与导出层隔离，PDF 不包含选中边框、按钮、textarea、错误提示或编辑工具栏。
+- Repository 禁止 legacy、archived、invalid_reference、缺少 currentRevision 的内容编辑；`refreshResumeBranchSyncStatus` 仍允许 invalid_reference 分支刷新状态。
+
+数据迁移：
+
+- 未新增 Dexie 表。
+- 未升级 Dexie，当前仍为 v7。
+- 未持久化 ResumeDocument。
+- 未执行 V2 数据迁移。
+
+验证结果：
+
+- `pnpm typecheck` 通过。
+- `pnpm lint` 通过。
+- `pnpm exec vitest run tests/unit/resumeDocument.test.ts tests/unit/branch.test.ts` 通过：8/8。
+- `pnpm exec playwright test tests/e2e/stageV2G0aResumeStudio.spec.ts --project=chromium` 通过：2/2。
+- `pnpm test` 通过：58/58。
+- `pnpm build` 通过。
+
+发现的Bug：
+
+- 首次 e2e 发现点击“编辑”后 textarea 未自动获得焦点，导致 Escape 不会触发取消；已通过给编辑 textarea 增加 `autoFocus` 修复。
+
+遗留问题：
+
+- 未全量重跑完整 E2E、C1 eval、C2 eval。
+- V1 Git 稳定检查点、快速启动说明、Demo材料、模型与开源组件说明仍待收尾。
+- G1 是否引入拖拽库和右侧属性面板需另行确认。
+
+下一步：
+
+- 若继续 V2，建议单独确认 V2-G1 范围后再启动；不得在 G1 前自动进入 DOCX、OCR、多Profile、Application 或模板市场。
 
 ### 2026-07-03：第二代规划体系初始化
 

@@ -11,7 +11,7 @@
 ## 1. 当前V1基线
 
 - 当前 MVP 已完成：粘贴/文本型 PDF 导入、CareerProfile、JD解析、RequirementMatch、AI建议、Fact Guard、JobAdaptationDraft、verified ResumeBranch、双模板 A4 预览、浏览器打印 PDF 导出、PDF 来源追踪。
-- 当前测试状态以 `history.md` 的 E1.1 记录为准：typecheck、lint、unit、build、e2e、C1 eval、C2 eval 均曾通过。
+- 当前测试状态：V2-G0a 本轮通过 typecheck、lint、58 个单元测试、生产构建，并新增 G0a 专项 E2E 2/2 通过。完整 E2E 最近结果仍为 61/63，2 个既有 flaky 用例待稳定性收口；本轮未全量重跑完整 E2E、C1 eval 或 C2 eval。
 - 当前 Dexie 实际版本：v7。
 - 当前稳定门槛：C2 `unsafeAllowed=0`，未确认事实进入正式材料数量为 0。
 - 当前待收尾：V1 Git 检查点、快速启动/演示说明、比赛截图/视频/PPT、模型与开源组件说明、旧 Plan 状态补记。
@@ -26,7 +26,7 @@
 | MVP v1.0 Git检查点 | `[ ]` | 是 | 当前工作树非干净；V2编码前应建立稳定检查点。 |
 | Demo运行手册 | `[ ]` | 否 | 属比赛交付，可与V2规划并行，不与V2编码混做。 |
 | 截图、视频、PPT | `[ ]` | 否 | 属比赛交付，不阻塞本次规划。 |
-| 严重Bug修复 | `[!]` | 是 | 若出现事实安全、导出或数据损坏问题，优先于V2功能。 |
+| 严重Bug处理机制 | 持续门槛 | 是 | 发现事实安全、导出或数据损坏问题时立即暂停V2。 |
 | 文档一致性修复 | `[x]` | 否 | 本轮已冻结V1文档并建立V2入口。 |
 
 ## 3. 第二代核心定位
@@ -128,20 +128,22 @@ OCR、浏览器扩展、网页JD、云同步、加密导入导出、模板市场
 
 ## 10. 当前准备实施的里程碑
 
-当前只准备 V2-G0a：Resume Studio 最小垂直切片。详细设计见 [`docs/v2/FIRST_GOAL.md`](docs/v2/FIRST_GOAL.md)。
+当前已完成 V2-G0a：Resume Studio 最小垂直切片。详细设计见 [`docs/v2/FIRST_GOAL.md`](docs/v2/FIRST_GOAL.md)。
+
+G0a硬约束：不持久化ResumeDocument，不新增Dexie表，不升级Dexie v8，不建立第二套内容Revision系统；文本保存必须复用现有ResumeBranch/ResumeRevision、`editResumeBranch`、`expectedRevision`、`operationId`、事务和Fact Guard路径。
 
 完成定义：
 
-- 打开一个现有 verified ResumeBranch。
-- 选中一个简历区块。
-- 双击或点击编辑进入行内编辑。
-- 修改合法文本后 Repository 重新运行 Fact Guard。
-- 保存后实时更新预览。
-- 内容修改创建内容 Revision。
-- 模板选择和样式不创建内容 Revision。
-- 支持撤销最近一次内容修改。
-- 分支切换和恢复后清理本地编辑状态。
-- V1两套模板和PDF导出正常。
+- `[x]` 打开一个现有 verified ResumeBranch。
+- `[x]` 选中一个简历区块。
+- `[x]` 双击、点击编辑、Enter/F2 进入行内编辑。
+- `[x]` 修改合法文本后 Repository 重新运行 Fact Guard。
+- `[x]` 保存后实时更新预览。
+- `[x]` 内容修改创建内容 Revision。
+- `[x]` 模板选择和样式不创建内容 Revision。
+- `[x]` 支持撤销最近一次内容修改。
+- `[x]` 分支切换、revision变化、恢复、撤销、保存成功和离开编辑模式后清理本地编辑状态。
+- `[x]` V1两套模板和PDF导出正常，编辑控件不进入 PDF。
 
 ## 11. 安全和回归门槛
 
@@ -167,8 +169,8 @@ OCR、浏览器扩展、网页JD、云同步、加密导入导出、模板市场
 
 ## 13. 下一开发路线
 
-当前应执行的一个Goal：人工审核 `docs/v2/FIRST_GOAL.md`，确认后再启动 V2-G0a。
+当前已完成Goal：V2-G0a Resume Studio 最小垂直切片。
 
-该Goal后的候选Goal：V2-G1 所见即所得编辑器增强，补齐拖拽排序和右侧属性面板。
+该Goal后的候选Goal：V2-G1 所见即所得编辑器增强，补齐拖拽排序和右侧属性面板。启动前需要另行确认范围，不能自动扩大到 DOCX、OCR、多Profile、Application 或模板市场。
 
-当前禁止进入：V2业务代码、Schema/Dexie迁移、DOCX、OCR、Application、自由画布、模板市场、自动投递、依赖升级。
+当前禁止进入：Schema/Dexie迁移、DOCX、OCR、Application、自由画布、模板市场、自动投递、依赖升级。
