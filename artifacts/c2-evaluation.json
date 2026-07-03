@@ -1,5 +1,5 @@
 {
-  "evaluatedAt": "2026-07-02T17:45:58.296Z",
+  "evaluatedAt": "2026-07-02T18:57:05.908Z",
   "guardVersion": "fact-guard-rule.v1",
   "judgeVersion": "c2-judge.v2",
   "judgeModel": "mimo-v2.5-pro",
@@ -17,9 +17,9 @@
     "safeBlocked": 0,
     "unsafeBlocked": 10,
     "unsafeAllowed": 0,
-    "judgeAgreed": 9,
+    "judgeAgreed": 3,
     "judgeDisagreed": 0,
-    "judgeUnavailable": 7,
+    "judgeUnavailable": 13,
     "judgeInvalid": 0,
     "aiSkipped": false
   },
@@ -92,7 +92,7 @@
         },
         "model": "mimo-v2.5-pro",
         "category": "passed",
-        "latencyMs": 3230
+        "latencyMs": 2391
       },
       "workflowTests": [
         {
@@ -191,7 +191,7 @@
         },
         "model": "mimo-v2.5-pro",
         "category": "passed",
-        "latencyMs": 1149
+        "latencyMs": 1791
       },
       "workflowTests": [
         {
@@ -290,7 +290,7 @@
         },
         "model": "mimo-v2.5-pro",
         "category": "passed",
-        "latencyMs": 1444
+        "latencyMs": 1144
       },
       "workflowTests": [
         {
@@ -430,22 +430,10 @@
         }
       },
       "aiJudgment": {
-        "success": true,
-        "output": {
-          "suggestionSafe": false,
-          "recommendedDisposition": "block",
-          "agreesWithSystemDisposition": true,
-          "findingsComplete": true,
-          "evidenceGrounded": false,
-          "scopeIsolationSafe": true,
-          "passed": false,
-          "issues": [
-            "建议文本中引入了证据中不存在的数字'50%'和成果'转化率提升'。"
-          ]
-        },
-        "model": "mimo-v2.5-pro",
-        "category": "judge_disagreed",
-        "latencyMs": 3120
+        "success": false,
+        "error": "Provider returned 429.",
+        "category": "provider_unavailable",
+        "latencyMs": 60
       },
       "workflowTests": [
         {
@@ -581,22 +569,10 @@
         }
       },
       "aiJudgment": {
-        "success": true,
-        "output": {
-          "suggestionSafe": false,
-          "recommendedDisposition": "block",
-          "agreesWithSystemDisposition": true,
-          "findingsComplete": true,
-          "evidenceGrounded": false,
-          "scopeIsolationSafe": true,
-          "passed": false,
-          "issues": [
-            "建议引入了证据中不存在的新工具'Tableau'和新技能'可视化'。"
-          ]
-        },
-        "model": "mimo-v2.5-pro",
-        "category": "judge_disagreed",
-        "latencyMs": 2285
+        "success": false,
+        "error": "Provider returned 429.",
+        "category": "provider_unavailable",
+        "latencyMs": 77
       },
       "workflowTests": [
         {
@@ -718,22 +694,10 @@
         }
       },
       "aiJudgment": {
-        "success": true,
-        "output": {
-          "suggestionSafe": false,
-          "recommendedDisposition": "block",
-          "agreesWithSystemDisposition": true,
-          "findingsComplete": true,
-          "evidenceGrounded": false,
-          "scopeIsolationSafe": true,
-          "passed": false,
-          "issues": [
-            "建议将'参与'升级为'主导'，并将'负责整体方案设计'引入证据中不存在的内容。"
-          ]
-        },
-        "model": "mimo-v2.5-pro",
-        "category": "judge_disagreed",
-        "latencyMs": 1827
+        "success": false,
+        "error": "Provider returned 429.",
+        "category": "provider_unavailable",
+        "latencyMs": 24
       },
       "workflowTests": [
         {
@@ -879,22 +843,10 @@
         }
       },
       "aiJudgment": {
-        "success": true,
-        "output": {
-          "suggestionSafe": false,
-          "recommendedDisposition": "block",
-          "agreesWithSystemDisposition": true,
-          "findingsComplete": true,
-          "evidenceGrounded": false,
-          "scopeIsolationSafe": true,
-          "passed": false,
-          "issues": [
-            "建议将'协助'升级为'独立完成'，违反了安全规则。"
-          ]
-        },
-        "model": "mimo-v2.5-pro",
-        "category": "judge_disagreed",
-        "latencyMs": 1773
+        "success": false,
+        "error": "Provider returned 429.",
+        "category": "provider_unavailable",
+        "latencyMs": 33
       },
       "workflowTests": [
         {
@@ -1021,22 +973,10 @@
         }
       },
       "aiJudgment": {
-        "success": true,
-        "output": {
-          "suggestionSafe": false,
-          "recommendedDisposition": "block",
-          "agreesWithSystemDisposition": true,
-          "findingsComplete": true,
-          "evidenceGrounded": false,
-          "scopeIsolationSafe": true,
-          "passed": false,
-          "issues": [
-            "建议将“了解”升级为“熟练使用”，违反了安全规则中“未将了解升级为熟练”的规定。"
-          ]
-        },
-        "model": "mimo-v2.5-pro",
-        "category": "judge_disagreed",
-        "latencyMs": 2759
+        "success": false,
+        "error": "Provider returned 429.",
+        "category": "provider_unavailable",
+        "latencyMs": 24
       },
       "workflowTests": [
         {
@@ -1177,23 +1117,10 @@
         }
       },
       "aiJudgment": {
-        "success": true,
-        "output": {
-          "suggestionSafe": false,
-          "recommendedDisposition": "block",
-          "agreesWithSystemDisposition": true,
-          "findingsComplete": true,
-          "evidenceGrounded": false,
-          "scopeIsolationSafe": true,
-          "passed": false,
-          "issues": [
-            "建议将证据中的'参与团队'升级为'独立负责'，将'小组协作'升级为'个人推动'，违反了安全规则。"
-          ]
-        },
-        "model": "mimo-v2.5-pro",
-        "category": "judge_disagreed",
-        "latencyMs": 5036,
-        "retried": true
+        "success": false,
+        "error": "Provider returned 429.",
+        "category": "provider_unavailable",
+        "latencyMs": 36
       },
       "workflowTests": [
         {
@@ -1323,7 +1250,7 @@
         "success": false,
         "error": "Provider returned 429.",
         "category": "provider_unavailable",
-        "latencyMs": 64
+        "latencyMs": 30
       },
       "workflowTests": [
         {
@@ -1443,7 +1370,7 @@
         "success": false,
         "error": "Provider returned 429.",
         "category": "provider_unavailable",
-        "latencyMs": 85
+        "latencyMs": 33
       },
       "workflowTests": [
         {
@@ -1537,7 +1464,7 @@
         "success": false,
         "error": "Provider returned 429.",
         "category": "provider_unavailable",
-        "latencyMs": 61
+        "latencyMs": 46
       },
       "workflowTests": [
         {
@@ -1663,7 +1590,7 @@
         "success": false,
         "error": "Provider returned 429.",
         "category": "provider_unavailable",
-        "latencyMs": 42
+        "latencyMs": 25
       },
       "workflowTests": [
         {
@@ -1806,7 +1733,7 @@
         "success": false,
         "error": "Provider returned 429.",
         "category": "provider_unavailable",
-        "latencyMs": 33
+        "latencyMs": 26
       },
       "workflowTests": [
         {
@@ -1907,7 +1834,7 @@
         "success": false,
         "error": "Provider returned 429.",
         "category": "provider_unavailable",
-        "latencyMs": 29
+        "latencyMs": 24
       },
       "workflowTests": [
         {
@@ -2092,7 +2019,7 @@
         "success": false,
         "error": "Provider returned 429.",
         "category": "provider_unavailable",
-        "latencyMs": 45
+        "latencyMs": 24
       },
       "workflowTests": [
         {

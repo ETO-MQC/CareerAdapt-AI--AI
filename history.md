@@ -1,3 +1,37 @@
+# CareerAdapt AI V1 档案提示
+
+本文件为 CareerAdapt AI 第一代 MVP 历史档案。第二代开发统一使用 `plan2.md` 和 `history2.md`。除第一代严重缺陷修复和交付补记外，不再向本文件追加第二代内容。
+
+## 2026-07-03：阶段E-E1.1 文本型 PDF 导入独立验收收口
+
+本次目标：
+- 对已完成的 E1a/E1b 文本型 PDF 导入流程进行独立验收收口，覆盖 27 个验收场景。
+- 主动寻找真实 Bug，不新增产品功能，不进入 OCR/DOCX/E2。
+
+修改文件：
+- `src/app/profile/ProfileWorkspace.tsx`（Bug 修复：extracting 状态刷新恢复）
+- `tests/e2e/e1-verification.spec.ts`（新增：30 个 E2E 验收测试）
+- `tests/unit/pdfImport.test.ts`（新增 1 个单元测试：interrupted 状态恢复）
+- `tests/fixtures/pdf/generate-fixtures.ts`（新增：pdf-lib fixture 生成脚本）
+- `tests/fixtures/pdf/*.pdf`（新增 13 个 PDF fixture）
+- `package.json`、`pnpm-lock.yaml`（新增 pdf-lib devDependency）
+- `Plan.md`、`history.md`
+
+修改内容：
+- **Bug 修复**：`ProfileWorkspace.tsx` loadPdfSession useEffect 未处理 `extracting`/`parsing` 状态。刷新后若 session 处于提取中，UI 显示 idle 而 session 在 IndexedDB 中仍为 `extracting`，导致状态不一致。修复后 `extracting`/`parsing` 映射为 `failed` 并显示中断提示；`interrupted` 状态显示重新导入提示。
+- **新增 E2E 验收测试**：`e1-verification.spec.ts` 覆盖场景 1-27，包括文件校验（空文件、非 PDF、伪造扩展名、页数限制）、多页提取、中文提取、双栏警告、Prompt 注入、损坏 PDF 降级、提取取消、刷新恢复、隐私确认绑定、用户编辑来源、sourceQuote 定位显示、session 删除、粘贴导入回归和日志隐私。
+- **新增单元测试**：验证 `extracting` 状态可正确更新为 `interrupted`。
+- **PDF fixtures**：使用 pdf-lib（非 Playwright）生成单页英文、多页英文、重复页眉、Prompt 注入、六页超限、空页、损坏、非 PDF、双栏等 fixture；保留现有 reportlab 和 Playwright fixture 不变。
+- **未进入 E2**：不进入 OCR、DOCX、比赛材料或新模板。
+
+验证结果：
+- 场景 1-27 全部通过（30 个 E2E 测试 + 1 个单元测试）
+- 发现并修复 1 个真实 Bug（extracting 状态刷新恢复）
+- 回归 typecheck/lint/test(55)/build/test:e2e/c1:eval/c2:eval 全部通过
+- C2 指标保持 safeAllowed=6/safeBlocked=0/unsafeBlocked=10/unsafeAllowed=0/overallQualified=true
+
+---
+
 ## 2026-07-03：阶段E-E1 文本型 PDF 导入与 Profile Builder 衔接
 
 本次目标：

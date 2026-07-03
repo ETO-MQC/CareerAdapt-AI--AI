@@ -1,5 +1,9 @@
 ﻿# 职适AI开发计划
 
+# CareerAdapt AI V1 档案提示
+
+本文件为 CareerAdapt AI 第一代 MVP 历史档案。第二代开发统一使用 `plan2.md` 和 `history2.md`。除第一代严重缺陷修复和交付补记外，不再向本文件追加第二代内容。
+
 依据：`职适AI_产品需求文档_PRD_v1.0.md`
 
 当前目标：先完成“导入/粘贴 -> 职业母档案 -> JD解析 -> 经历匹配 -> AI建议 -> 岗位分支 -> 模板预览 -> PDF导出”的 MVP 纵向闭环。任何不能直接增强这条闭环的功能先后置。
@@ -119,6 +123,7 @@
 
 - [x] E1a 文本型 PDF 本地导入：浏览器本地 PDF.js worker 提取文本，PDF.js worker/CMap/standard_fonts/wasm 均从 `public/pdfjs` 本地加载；校验 8MB、5页、60000字符、text item 数量、单页字符量和提取超时；支持取消、刷新恢复、扫描件/无文本层降级、重复 fileHash 提示、Prompt 注入文字风险提示和双栏复杂版面警告。
 - [x] E1b Profile Builder 衔接：分开保存 `fileHash`、`normalizedTextHash`、`aiInputHash`；隐私确认绑定实际 `aiInputHash`，修改 AI 输入后必须重新确认；AI 输出经 Schema 校验和一次自动重试；PDF `sourceQuote` 由程序在页文本中确定性查找，唯一匹配才标记 `pdf_import`，0次为 `unlocated`、多次为 `ambiguous`；ambiguous/unlocated 不可默认确认或提交；已有正式 `CareerProfile` 时仅保留 PDF 导入草稿并提示手动处理。
+- [x] E1.1 文本型 PDF 导入独立验收收口：27 个验收场景覆盖文件校验、多页提取、中英文混合、双栏警告、重复页眉清理、Prompt 注入、异常 PDF 降级、提取取消、刷新恢复、Hash 分离、隐私确认绑定、sourceQuote 定位、session 删除、粘贴导入回归和日志隐私；修复 extracting 状态刷新后未标记 interrupted 的 Bug（`ProfileWorkspace.tsx`）；新增 `e1-verification.spec.ts`（30 个 E2E 测试）和 1 个单元测试；回归 typecheck/lint/test(55)/build/test:e2e/c1:eval/c2:eval 全部通过，C2 保持 safeAllowed=6/safeBlocked=0/unsafeBlocked=10/unsafeAllowed=0/overallQualified=true；未进入 E2。
 
 ## 补充量化验收指标
 
