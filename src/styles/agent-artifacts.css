@@ -1,0 +1,503 @@
+.agent-artifact-launcher {
+  border-color: var(--ai-border) !important;
+  color: var(--ai-text) !important;
+  font-size: 12px !important;
+}
+
+.agent-artifact-backdrop {
+  display: none;
+}
+
+.agent-artifact-drawer {
+  background: var(--ai-surface-soft);
+  border-left: 1px solid var(--ai-border);
+  bottom: 0;
+  box-shadow: -18px 0 44px rgba(0, 0, 0, 0.22);
+  color: var(--ai-text);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: var(--agent-artifact-width, 432px);
+  z-index: 30;
+}
+
+.agent-artifact-drawer.is-pinned {
+  box-shadow: none;
+  flex: 0 0 var(--agent-artifact-width, 432px);
+  position: relative;
+  width: var(--agent-artifact-width, 432px);
+}
+
+.agent-artifact-drawer.is-collapsed {
+  align-items: center;
+  box-shadow: none;
+  flex: 0 0 44px;
+  justify-content: flex-start;
+  padding-top: 8px;
+  position: relative;
+  width: 44px;
+}
+
+.agent-artifact-drawer.is-collapsed > button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: var(--ai-muted);
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 40px;
+  justify-content: center;
+  width: 36px;
+}
+
+.agent-artifact-drawer.is-collapsed > button:hover,
+.agent-artifact-drawer.is-collapsed > button:focus-visible {
+  background: var(--ai-surface-raised);
+  color: var(--ai-text);
+}
+
+.agent-artifact-drawer.is-collapsed svg {
+  height: 16px;
+  width: 16px;
+}
+
+.agent-artifact-drawer.is-collapsed span {
+  font-size: 10px;
+}
+
+.agent-artifact-resizer {
+  bottom: 0;
+  cursor: col-resize;
+  left: -3px;
+  position: absolute;
+  top: 0;
+  width: 7px;
+  z-index: 2;
+}
+
+.agent-artifact-resizer:hover,
+.agent-artifact-resizer:focus-visible {
+  background: color-mix(in srgb, var(--ai-accent) 40%, transparent);
+  outline: 0;
+}
+
+.agent-artifact-drawer-header {
+  align-items: center;
+  border-bottom: 1px solid var(--ai-border);
+  display: flex;
+  flex: 0 0 56px;
+  gap: 4px;
+  padding: 8px 10px 8px 16px;
+}
+
+.agent-artifact-drawer-header > div {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.agent-artifact-drawer-header span {
+  color: var(--ai-muted);
+  font-size: 10px;
+}
+
+.agent-artifact-drawer-header strong {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-artifact-drawer-header button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: var(--ai-muted);
+  display: inline-flex;
+  height: 34px;
+  justify-content: center;
+  width: 34px;
+}
+
+.agent-artifact-drawer-header button:hover {
+  background: var(--ai-surface-raised);
+  color: var(--ai-text);
+}
+
+.agent-artifact-drawer-header svg {
+  height: 16px;
+  width: 16px;
+}
+
+.agent-artifact-tabs {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 8px 12px;
+}
+
+.agent-artifact-tabs button {
+  background: transparent;
+  border: 1px solid var(--ai-border);
+  border-radius: 8px;
+  color: var(--ai-muted);
+  flex: 0 0 auto;
+  font: inherit;
+  font-size: 11px;
+  max-width: 180px;
+  min-height: 32px;
+  overflow: hidden;
+  padding: 0 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-artifact-tabs button[aria-selected="true"] {
+  background: var(--ai-surface-raised);
+  border-color: var(--ai-border-strong);
+  color: var(--ai-text);
+}
+
+.agent-artifact-drawer-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overscroll-behavior: contain;
+  overflow: auto;
+  padding: 8px 12px 16px;
+}
+
+.agent-artifact-content {
+  display: grid;
+  gap: 10px;
+}
+
+.agent-artifact {
+  background: var(--ai-surface);
+  border: 1px solid var(--ai-border);
+  border-radius: var(--ai-radius-md);
+  color: var(--ai-muted);
+  margin: 0;
+  padding: 14px;
+}
+
+.agent-artifact summary {
+  color: var(--ai-text);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.agent-artifact summary span {
+  color: var(--ai-muted);
+  float: right;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.agent-artifact p,
+.agent-artifact li {
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.agent-artifact ul {
+  margin: 12px 0;
+  padding-left: 18px;
+}
+
+.agent-artifact a,
+.agent-artifact-partial a {
+  color: var(--ai-accent);
+  font-size: 12px;
+}
+
+.agent-artifact-success {
+  border-color: var(--ai-border-strong);
+}
+
+.agent-diff-list article {
+  border-top: 1px solid var(--ai-border);
+}
+
+.agent-diff-list del {
+  color: var(--ai-danger);
+}
+
+.agent-diff-list ins {
+  color: var(--ai-accent);
+}
+
+.agent-artifact-partial {
+  background: var(--ai-surface);
+  border: 1px solid var(--ai-border-strong);
+  border-radius: var(--ai-radius-md);
+  color: var(--ai-muted);
+  padding: 16px;
+}
+
+.agent-artifact-partial strong {
+  color: var(--ai-text);
+}
+
+.agent-artifact-partial p {
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.agent-import-review-artifact {
+  padding: 12px;
+}
+
+.agent-import-review-artifact > header {
+  align-items: flex-start;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.agent-import-review-artifact > header > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.agent-import-review-artifact > header strong {
+  color: var(--ai-text);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-import-review-artifact > header span,
+.agent-import-review-state {
+  color: var(--ai-muted);
+  font-size: 11px;
+}
+
+.agent-import-review-artifact dl {
+  border-block: 1px solid var(--ai-border);
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 12px 0;
+  padding: 10px 0;
+}
+
+.agent-import-review-artifact dl div {
+  display: flex;
+  justify-content: space-between;
+}
+
+.agent-import-review-artifact dt,
+.agent-import-review-artifact dd {
+  font-size: 12px;
+  margin: 0;
+}
+
+.agent-import-review-artifact dt {
+  color: var(--ai-muted);
+}
+
+.agent-import-review-artifact dd {
+  color: var(--ai-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.agent-import-review-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.agent-reconciliation-list {
+  display: grid;
+  gap: 8px;
+}
+
+.agent-reconciliation-list > article {
+  border-bottom: 1px solid var(--ai-border);
+  display: grid;
+  gap: 2px;
+  padding-bottom: 8px;
+}
+
+.agent-reconciliation-list > article > div:first-child {
+  display: grid;
+  gap: 1px;
+}
+
+.agent-reconciliation-list strong {
+  color: var(--ai-text);
+  font-size: 12px;
+}
+
+.agent-reconciliation-list span {
+  color: var(--ai-muted);
+  font-size: 11px;
+}
+
+.agent-career-asset-list {
+  display: grid;
+  gap: 8px;
+  max-height: min(56vh, 560px);
+  overscroll-behavior: contain;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.agent-career-follow-up {
+  border-left: 2px solid var(--ai-accent);
+  margin: 0 0 12px;
+  padding-left: 8px;
+}
+
+.agent-career-follow-up strong {
+  color: var(--ai-text);
+}
+
+.agent-career-asset {
+  border: 1px solid var(--ai-border);
+  border-radius: var(--ai-radius-sm);
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.agent-career-asset > header {
+  align-items: flex-start;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.agent-career-asset > header > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.agent-career-asset > header strong,
+.agent-career-asset-detail strong {
+  color: var(--ai-text);
+}
+
+.agent-career-asset-type {
+  color: var(--ai-muted);
+  font-size: 11px;
+}
+
+.agent-career-asset-status {
+  border: 1px solid var(--ai-border);
+  border-radius: 999px;
+  flex: 0 0 auto;
+  font-size: 11px;
+  padding: 2px 8px;
+}
+
+.agent-career-asset-status.is-confirmed {
+  color: var(--ai-accent);
+}
+
+.agent-career-asset-status.is-conflict,
+.agent-career-asset-status.is-insufficient {
+  color: var(--ai-danger);
+}
+
+.agent-career-asset-meta,
+.agent-career-asset-description {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.agent-career-asset-description {
+  color: var(--ai-text);
+  white-space: pre-line;
+}
+
+.agent-career-asset details {
+  border-top: 1px solid var(--ai-border);
+  padding-top: 8px;
+}
+
+.agent-career-asset-detail {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.agent-career-asset-detail ul {
+  margin: 0;
+}
+
+.agent-import-review-actions button {
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  color: var(--ai-muted);
+  font: inherit;
+  font-size: 12px;
+  min-height: 28px;
+  padding: 0 8px;
+}
+
+.agent-import-review-actions button:hover,
+.agent-import-review-actions button:focus-visible {
+  background: var(--ai-surface-raised);
+  color: var(--ai-text);
+}
+
+.agent-import-review-actions button.is-primary {
+  color: var(--ai-accent);
+  font-weight: 600;
+}
+
+@media (max-width: 860px) {
+  .agent-artifact-backdrop {
+    background: rgba(0, 0, 0, 0.5);
+    border: 0;
+    display: block;
+    inset: 0;
+    position: fixed;
+    z-index: 70;
+  }
+
+  .agent-artifact-drawer,
+  .agent-artifact-drawer.is-pinned {
+    bottom: 0;
+    left: auto;
+    max-width: calc(100vw - 24px);
+    position: fixed;
+    right: 0;
+    top: 0;
+    width: min(440px, calc(100vw - 24px));
+    z-index: 71;
+  }
+
+  .agent-artifact-drawer.is-collapsed {
+    bottom: auto;
+    left: auto;
+    max-width: none;
+    position: absolute;
+    right: 0;
+    top: 8px;
+    width: 44px;
+    z-index: 30;
+  }
+
+  .agent-artifact-resizer {
+    display: none;
+  }
+}

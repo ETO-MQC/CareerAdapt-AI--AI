@@ -1,0 +1,287 @@
+import { expect, test, type Page } from "@playwright/test";
+import { openManualContentTab, openManualHistoryTab, openManualLayoutTab, openManualPageTab, openManualTypographyTab } from "./support/g7b2Ui";
+
+type DbResumeBranch = {
+  id: string;
+  name: string;
+  migrationStatus: string;
+};
+
+type RenderSectionTarget = {
+  sectionType: string;
+  title: string;
+  itemId: string;
+};
+
+function visibleA4Page(page: Page) {
+  return page.locator(".resume-preview-stage").getByTestId("resume-a4-page").first();
+}
+
+async function createBranchFromDraft(page: Page, branchName: string) {
+  await page.goto("/jobs");
+  await page.getByTestId("run-experience-match").click();
+  await expect(page.locator(".match-row").first()).toBeVisible();
+  await page.getByTestId("create-suggestion-draft").click();
+  await expect(page.locator(".notice")).toBeVisible();
+
+  await page.goto("/resume");
+  await page.getByTestId("resume-import-strip").waitFor({ state: "visible" });
+  await page.getByTestId("job-suggestion-draft-select").selectOption({ index: 0 });
+  await page.getByTestId("new-resume-branch-name").fill(branchName);
+  await page.getByTestId("create-job-resume").click();
+  await expect(page.locator(".branch-list .match-row").filter({ hasText: branchName })).toBeVisible();
+  await expect(visibleA4Page(page)).toBeVisible();
+}
+
+async function enablePreviewEditing(page: Page) {
+  const toggle = page.getByTestId("canvas-edit-toggle");
+  await expect(toggle).toBeEnabled();
+  await toggle.check();
+}
+
+async function getBranchByName(page: Page, branchName: string): Promise<DbResumeBranch> {
+  return page.evaluate(async (targetName: string) => {
+    return new Promise<DbResumeBranch>((resolveBranch, reject) => {
+      const request = indexedDB.open("CareerAdaptDb");
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const db = request.result;
+        const tx = db.transaction("resumeBranches", "readonly");
+        const getAll = tx.objectStore("resumeBranches").getAll();
+        getAll.onerror = () => reject(getAll.error);
+        getAll.onsuccess = () => {
+          const found = (getAll.result as DbResumeBranch[])
+            .find((branch) => branch.name === targetName && branch.migrationStatus === "verified");
+          if (!found) {
+            reject(new Error("branch_not_found"));
+            return;
+          }
+          resolveBranch(found);
+        };
+        tx.oncomplete = () => db.close();
+      };
+    });
+  }, branchName);
+}
+
+async function getResumeRevisionCount(page: Page, branchId: string): Promise<number> {
+  return page.evaluate(async (targetBranchId: string) => {
+    return new Promise<number>((resolveCount, reject) => {
+      const request = indexedDB.open("CareerAdaptDb");
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const db = request.result;
+        const tx = db.transaction("resumeRevisions", "readonly");
+        const index = tx.objectStore("resumeRevisions").index("branchId");
+        const countRequest = index.count(targetBranchId);
+        countRequest.onerror = () => reject(countRequest.error);
+        countRequest.onsuccess = () => resolveCount(countRequest.result);
+        tx.oncomplete = () => db.close();
+      };
+    });
+  }, branchId);
+}
+
+async function getCssVariable(page: Page, name: string) {
+  return visibleA4Page(page).evaluate((element, variableName) => {
+    return getComputedStyle(element).getPropertyValue(variableName).trim();
+  }, name);
+}
+
+async function getSectionTarget(page: Page): Promise<RenderSectionTarget> {
+  return visibleA4Page(page).evaluate((pageElement) => {
+    const sections = Array.from(pageElement.querySelectorAll<HTMLElement>("[data-render-section]"));
+    for (const section of sections) {
+      const item = section.querySelector<HTMLElement>('[data-source-item-id]:not([data-source-item-id^="profile:"])');
+      const title = section.querySelector<HTMLElement>("h2");
+      if (item?.dataset.sourceItemId && title?.textContent?.trim()) {
+        return {
+          sectionType: section.dataset.renderSection ?? "",
+          title: title.textContent.trim(),
+          itemId: item.dataset.sourceItemId
+        };
+      }
+    }
+    throw new Error("section_target_not_found");
+  });
+}
+
+async function isSectionTitleVisible(page: Page, sectionType: string, title: string) {
+  return visibleA4Page(page).evaluate((pageElement, target) => {
+    const section = pageElement.querySelector<HTMLElement>(`[data-render-section="${target.sectionType}"]`);
+    return section?.querySelector("h2")?.textContent?.trim() === target.title;
+  }, { sectionType, title });
+}
+
+async function expectNotice(page: Page, text: string) {
+  await expect(page.locator(".notice").filter({ hasText: text })).toBeVisible({ timeout: 10000 });
+}
+
+async function getLatestExportRecord(page: Page) {
+  return page.evaluate(async () => {
+    return new Promise<Record<string, unknown>>((resolveRecord, reject) => {
+      const request = indexedDB.open("CareerAdaptDb");
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const db = request.result;
+        const tx = db.transaction("exportRecords", "readonly");
+        const getAll = tx.objectStore("exportRecords").getAll();
+        getAll.onerror = () => reject(getAll.error);
+        getAll.onsuccess = () => {
+          const records = (getAll.result as Array<Record<string, unknown>>)
+            .sort((left, right) => String(right.exportedAt ?? "").localeCompare(String(left.exportedAt ?? "")));
+          resolveRecord(records[0] ?? {});
+        };
+        tx.oncomplete = () => db.close();
+      };
+    });
+  });
+}
+
+test.describe("V2-G1b style property panel", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      window.print = () => {
+        document.body.setAttribute("data-print-invoked", "true");
+      };
+    });
+  });
+
+  test("右侧属性面板保存受控样式、Section 标题显隐和导出快照且不创建内容 Revision", async ({ page }) => {
+    const branchName = `V2 G1b 样式面板 ${Date.now()}`;
+    await createBranchFromDraft(page, branchName);
+    await openManualTypographyTab(page);
+    const branch = await getBranchByName(page, branchName);
+    const revisionsBefore = await getResumeRevisionCount(page, branch.id);
+
+    const propertyPanel = page.getByTestId("resume-property-panel");
+    await expect(propertyPanel).toBeVisible();
+    await page.getByLabel("页面密度").selectOption("compact");
+    await expectNotice(page,"页面密度已保存");
+    await expect.poll(() => getCssVariable(page, "--resume-page-padding-block")).toBe("10mm");
+
+    await page.getByLabel("正文字号").selectOption("small");
+    await expectNotice(page,"正文字号已保存");
+    await expect.poll(() => getCssVariable(page, "--resume-body-font-size")).toBe("8.8pt");
+
+    await page.getByLabel("行距").selectOption("tight");
+    await expectNotice(page,"行距已保存");
+    await expect.poll(() => getCssVariable(page, "--resume-line-height")).toBe("1.34");
+
+    await page.getByLabel("主题强调色：蓝色").click();
+    await expectNotice(page,"主题强调色已保存");
+    await expect.poll(() => getCssVariable(page, "--resume-accent-color")).toBe("#1d4f91");
+
+    await enablePreviewEditing(page);
+    const target = await getSectionTarget(page);
+    await openManualContentTab(page);
+    // Navigate to a section with textareas
+    await page.getByTestId("resume-section-nav").getByRole("button", { name: /工作经历/ }).click();
+    await page.getByTestId("resume-active-section-fields").locator("textarea").first().focus();
+    await openManualLayoutTab(page);
+    await page.getByRole("button", { name: "段落" }).click();
+    await expect(page.getByTestId("block-style-panel")).toBeVisible();
+
+    await propertyPanel.getByRole("button", { name: "栏目" }).click();
+    await expect(page.getByTestId("section-style-panel")).toBeVisible();
+    await page.getByLabel("显示栏目标题").click();
+    await expectNotice(page,"栏目标题已隐藏");
+    await expect.poll(() => isSectionTitleVisible(page, target.sectionType, target.title)).toBe(false);
+
+    await openManualPageTab(page);
+    await propertyPanel.getByRole("button", { name: "整页" }).click();
+    await page.getByRole("button", { name: "打印 / 保存 PDF" }).click();
+    await expect(page.locator("body")).toHaveAttribute("data-print-invoked", "true");
+    const exportRecord = await getLatestExportRecord(page);
+    const snapshot = exportRecord.presentationSnapshot as {
+      typography?: { bodyTextScale?: string; lineHeight?: string };
+      theme?: { accentColor?: string; density?: string };
+      sectionStyleOverrides?: Record<string, { showTitle?: boolean }>;
+    } | undefined;
+    expect(snapshot?.typography?.bodyTextScale).toBe("small");
+    expect(snapshot?.typography?.lineHeight).toBe("tight");
+    expect(snapshot?.theme?.accentColor).toBe("blue");
+    expect(snapshot?.theme?.density).toBe("compact");
+    expect(snapshot?.sectionStyleOverrides?.[target.sectionType]?.showTitle).toBe(false);
+
+    await openManualHistoryTab(page);
+    await page.getByRole("button", { name: "回退展示" }).click();
+    await expectNotice(page,"已撤销");
+    await expect.poll(() => isSectionTitleVisible(page, target.sectionType, target.title)).toBe(true);
+
+    await page.reload();
+    await expect(visibleA4Page(page)).toBeVisible();
+    await expect.poll(() => getCssVariable(page, "--resume-body-font-size")).toBe("8.8pt");
+    expect(await getResumeRevisionCount(page, branch.id)).toBe(revisionsBefore);
+  });
+
+  test("连续撤销和重做不会因闭包过期导致 undo/redo 栈错乱", async ({ page }) => {
+    const branchName = `V2 G1b undo bug ${Date.now()}`;
+    await createBranchFromDraft(page, branchName);
+    await openManualTypographyTab(page);
+
+    await expect(page.getByTestId("resume-property-panel")).toBeVisible();
+
+    // Make two style changes to build undo stack
+    await page.getByLabel("页面密度").selectOption("compact");
+    await expectNotice(page,"页面密度已保存");
+    await expect.poll(() => getCssVariable(page, "--resume-page-padding-block")).toBe("10mm");
+
+    await page.getByLabel("正文字号").selectOption("small");
+    await expectNotice(page,"正文字号已保存");
+    await expect.poll(() => getCssVariable(page, "--resume-body-font-size")).toBe("8.8pt");
+
+    // First undo: restores bodyTextScale
+    await openManualHistoryTab(page);
+    const undoButton = page.getByRole("button", { name: "回退展示" });
+    await expect(undoButton).toBeEnabled();
+    await undoButton.click();
+    await expectNotice(page,"已撤销");
+    await expect.poll(() => getCssVariable(page, "--resume-body-font-size")).toBe("9.3pt");
+
+    // Second undo: restores density
+    await expect(undoButton).toBeEnabled();
+    await undoButton.click();
+    await expectNotice(page,"已撤销");
+    await expect.poll(() => getCssVariable(page, "--resume-page-padding-block")).toBe("12mm");
+
+    // Both undos done; redo should be available
+    const redoButton = page.getByRole("button", { name: "重做展示" });
+    await expect(redoButton).toBeEnabled({ timeout: 5000 });
+
+    // Redo restores density
+    await redoButton.click();
+    await expectNotice(page,"已重做");
+    await expect.poll(() => getCssVariable(page, "--resume-page-padding-block")).toBe("10mm");
+
+    // Redo again restores bodyTextScale
+    await expect(redoButton).toBeEnabled();
+    await redoButton.click();
+    await expectNotice(page,"已重做");
+    await expect.poll(() => getCssVariable(page, "--resume-body-font-size")).toBe("8.8pt");
+  });
+
+  test("恢复模板默认样式后 overflow 重新测量", async ({ page }) => {
+    const branchName = `V2 G1b reset overflow ${Date.now()}`;
+    await createBranchFromDraft(page, branchName);
+    await openManualTypographyTab(page);
+
+    await expect(page.getByTestId("resume-property-panel")).toBeVisible();
+
+    // Change density to spacious to increase page padding
+    await page.getByLabel("页面密度").selectOption("spacious");
+    await expectNotice(page,"页面密度已保存");
+    await expect.poll(() => getCssVariable(page, "--resume-page-padding-block")).toBe("14mm");
+
+    // Reset to default
+    await page.getByRole("button", { name: "恢复模板默认样式" }).click();
+    await expectNotice(page,"已恢复当前模板默认样式");
+    await expect.poll(() => getCssVariable(page, "--resume-page-padding-block")).toBe("12mm");
+
+    // Verify overflow status element is visible and has valid content
+    await openManualPageTab(page);
+    const overflowStatus = page.getByTestId("overflow-status");
+    await expect(overflowStatus).toBeVisible();
+    await expect(overflowStatus.locator("strong")).not.toBeEmpty();
+  });
+});
