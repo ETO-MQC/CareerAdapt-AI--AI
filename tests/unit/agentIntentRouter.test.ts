@@ -1,0 +1,41 @@
+import { describe, expect, it } from "vitest";
+import { routeAgentIntent } from "@/agent/runtime/agentIntentRouter";
+
+describe("agent intent router", () => {
+  it("keeps typed job ingestion Agent-led", () => {
+    const routed = routeAgentIntent("我要录入岗位", { activeWorkflowId: "build_resume_from_profile" });
+    expect(routed).toEqual({ kind: "llm", confidence: "low" });
+  });
+
+  it("routes cancel to workflow control instead of conversation input", () => {
+    const routed = routeAgentIntent("确认取消", { activeWorkflowId: "job_ingestion" });
+    expect(routed).toMatchObject({
+      kind: "workflow_control",
+      action: { type: "cancel_workflow", workflowId: "job_ingestion" }
+    });
+  });
+
+  it("routes composer shortcuts to UI actions", () => {
+    expect(routeAgentIntent("选择简历")).toMatchObject({ kind: "ui_action", action: { type: "open_resume_picker" } });
+    expect(routeAgentIntent("打开工具")).toMatchObject({ kind: "ui_action", action: { type: "open_tool_palette" } });
+  });
+
+  it("does not open the profile browser for profile-library questions", () => {
+    expect(routeAgentIntent("我的资料库中的经历丰富吗")).toMatchObject({ kind: "llm" });
+    expect(routeAgentIntent("看看资料库里有哪些项目经历")).toMatchObject({ kind: "llm" });
+  });
+
+  it("keeps domain assembly Agent-led while explicit profile browsing stays a UI control", () => {
+    expect(routeAgentIntent("从资料库组装简历")).toMatchObject({ kind: "llm" });
+    expect(routeAgentIntent("打开资料库")).toMatchObject({
+      kind: "ui_action",
+      action: { type: "open_profile_browser" }
+    });
+  });
+
+  it("does not steal domain text or continuation because it contains a UI keyword", () => {
+    expect(routeAgentIntent("熟悉 TypeScript、自动化测试或 AI Coding 工具")).toMatchObject({ kind: "llm" });
+    expect(routeAgentIntent("继续")).toMatchObject({ kind: "llm" });
+    expect(routeAgentIntent("就按这些改")).toMatchObject({ kind: "llm" });
+  });
+});

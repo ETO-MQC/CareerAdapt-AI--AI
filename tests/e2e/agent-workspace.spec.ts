@@ -1,0 +1,410 @@
+import { expect, test } from "@playwright/test";
+
+test.describe("AI workspace shell", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route("**/api/agent/stream", async (route) => {
+      const body = route.request().postDataJSON() as {
+        messages?: Array<{ content: string }>;
+      };
+      const prompt = body.messages?.at(-1)?.content ?? "";
+      const response = prompt.includes("从零整理")
+        ? "好的，我们先从最近一段真实经历开始。请告诉我公司、岗位和时间范围。"
+        : prompt.includes("整理项目经历")
+          ? "可以。请先选择一段你确认真实存在的经历，我会按背景、职责、成果逐步提问。"
+          : "好的。请先提供这项任务需要的真实材料，我会逐步与你核对。";
+      await new Promise((resolve) => setTimeout(resolve, prompt.includes("从零整理") ? 900 : 300));
+      await route.fulfill({
+        contentType: "text/event-stream",
+        body: [
+          "event: model_text_delta",
+          `data: ${JSON.stringify({ type: "model_text_delta", delta: response })}`,
+          "",
+          "event: model_finish",
+          "data: {\"type\":\"model_finish\",\"stopReason\":\"final\"}",
+          "",
+          ""
+        ].join("\n")
+      });
+    });
+    await page.route("**/api/agent/turn", async (route) => {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          type: "ask_user",
+          message: "好的。请先提供这项任务需要的真实材料，我会逐步与你核对。"
+        })
+      });
+    });
+  });
+
+  test("enters conversation immediately from a quick card and shows thinking before planner returns", async ({ page }) => {
+    await page.unroute("**/api/agent/turn");
+    await page.route("**/api/agent/turn", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 900));
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          type: "ask_user",
+          message: "好的，我们先从最近一段真实经历开始。请告诉我公司、岗位和时间范围。"
+        })
+      });
+    });
+
+    await page.goto("/");
+    await page.getByRole("button", { name: /从零整理我的经历/ }).click();
+
+    await expect(page).toHaveURL(/\/ai-workspace$/);
+    await expect(page.getByText("我想从零整理自己的真实经历")).toBeVisible();
+    await expect(page.locator('[data-message-status="thinking"].is-streaming')).toBeVisible();
+    await expect(page.getByText("好的，我们先从最近一段真实经历开始")).toBeVisible();
+  });
+
+  test("sends a normal Chinese turn with streaming UI and message actions", async ({ page }) => {
+    await page.unroute("**/api/agent/turn");
+    await page.route("**/api/agent/turn", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          type: "ask_user",
+          message: "可以。请先选择一段你确认真实存在的经历，我会按背景、职责、成果逐步提问。"
+        })
+      });
+    });
+
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/ai-workspace");
+    await page.getByLabel("描述你的求职任务").fill("你好，请帮我整理项目经历");
+    await page.getByRole("button", { name: "发送消息" }).click();
+
+    await expect(page.getByText("你好，请帮我整理项目经历")).toBeVisible();
+    await expect(page.locator('[data-message-status="thinking"], [data-message-status="streaming"]').first()).toBeVisible();
+    await expect(page.getByText("可以。请先选择一段你确认真实存在的经历")).toBeVisible();
+    await expect(page.locator(".agent-message-row.is-assistant").last().getByRole("button", { name: "复制消息" })).toBeVisible();
+    await expect(page.locator(".agent-message-row.is-assistant").last().getByRole("button", { name: "重新生成" })).toBeVisible();
+    await expect(page.locator(".agent-message-row.is-user").last().getByRole("button", { name: "编辑并重发" })).toBeVisible();
+    const assistantRow = page.locator(".agent-message-row.is-assistant").last();
+    expect(await assistantRow.evaluate((element) => getComputedStyle(element).contentVisibility)).toBe("visible");
+    await assistantRow.getByLabel("更多消息操作").click();
+    await expect(assistantRow.getByRole("menu")).toBeVisible();
+    const menuBox = await assistantRow.getByRole("menu").boundingBox();
+    expect(menuBox?.y).toBeGreaterThanOrEqual(0);
+    await page.screenshot({ path: "artifacts/agent-conversation-after-1440x900.png", fullPage: true });
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await page.screenshot({ path: "artifacts/agent-conversation-after-1024x768.png", fullPage: true });
+  });
+
+  test("keeps a new task on the zero state instead of restoring the last session", async ({ page }) => {
+    await page.goto("/ai-workspace");
+    await page.getByLabel("描述你的求职任务").fill("你好，请帮我整理项目经历");
+    await page.getByRole("button", { name: "发送消息" }).click();
+    await expect(page.getByText("可以。请先选择一段你确认真实存在的经历")).toBeVisible();
+
+    await page.goto("/recycle");
+    await page.getByRole("button", { name: "新任务" }).click();
+
+    await expect(page).toHaveURL(/\/ai-workspace$/);
+    await expect(page.getByRole("heading", { name: "今天想从哪一步开始？" })).toBeVisible();
+    await expect(page.locator(".agent-message-row")).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "今天想从哪一步开始？" })).toBeVisible();
+    await expect(page.locator(".agent-message-row")).toHaveCount(0);
+  });
+
+  test("keeps the active user and thinking messages when navigating away and back", async ({ page }) => {
+    await page.unroute("**/api/agent/stream");
+    await page.route("**/api/agent/stream", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 2_000));
+      await route.fulfill({
+        contentType: "text/event-stream",
+        body: [
+          "event: model_text_delta",
+          `data: ${JSON.stringify({ type: "model_text_delta", delta: "跨页面任务已经正常完成。" })}`,
+          "",
+          "event: model_finish",
+          "data: {\"type\":\"model_finish\",\"stopReason\":\"final\"}",
+          "",
+          ""
+        ].join("\n")
+      });
+    });
+
+    await page.goto("/ai-workspace");
+    await page.getByLabel("描述你的求职任务").fill("请保留这条跨页面消息");
+    await page.getByRole("button", { name: "发送消息" }).click();
+    await expect(page.getByText("请保留这条跨页面消息")).toBeVisible();
+    await expect(page.locator('[data-message-status="thinking"], [data-message-status="streaming"]').first()).toBeVisible();
+
+    await page.getByRole("link", { name: "个人资料库" }).click();
+    await expect(page).toHaveURL(/\/profile$/);
+    await page.getByRole("link", { name: "返回任务" }).click();
+    await expect(page).toHaveURL(/\/ai-workspace$/);
+    await expect(page.getByText("请保留这条跨页面消息")).toBeVisible();
+    await expect(page.locator('[data-message-status="thinking"], [data-message-status="streaming"]').first()).toBeVisible();
+
+    await expect(page.getByText("跨页面任务已经正常完成。")).toBeVisible();
+    await expect(page.getByText("请保留这条跨页面消息")).toBeVisible();
+  });
+
+  test("keeps unsent composer drafts isolated by task and restores them when returning", async ({ page }) => {
+    await page.goto("/ai-workspace");
+    const composer = page.getByLabel("描述你的求职任务");
+    await composer.fill("请帮我整理项目经历");
+    await page.getByRole("button", { name: "发送消息" }).click();
+    await expect(page.locator(".agent-message-row.is-assistant").last()).toBeVisible();
+
+    await composer.fill("A 任务里尚未发送的补充内容");
+    await page.getByRole("button", { name: "新任务" }).click();
+    await expect(page.getByRole("heading", { name: "今天想从哪一步开始？" })).toBeVisible();
+    await expect(composer).toHaveValue("");
+
+    await composer.fill("新任务自己的草稿");
+    await page.getByRole("button", { name: /搜索 \/ 历史/ }).click();
+    const history = page.getByRole("dialog", { name: "历史记录" });
+    await expect(history).toBeVisible();
+    await history.locator(".agent-history-list > button").first().click();
+
+    await expect(page.locator(".agent-message-row.is-user").first()).toBeVisible();
+    await expect(composer).toHaveValue("A 任务里尚未发送的补充内容");
+  });
+
+  test("edits the original user message in place and exposes its prior version", async ({ page }) => {
+    let turnRequestCount = 0;
+    page.on("request", (request) => {
+      if (request.method() === "POST" && /\/api\/agent\/(?:turn|stream)$/.test(new URL(request.url()).pathname)) {
+        turnRequestCount += 1;
+      }
+    });
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await page.goto("/ai-workspace");
+    const composer = page.getByLabel("描述你的求职任务");
+    await composer.fill("请帮我整理项目经历");
+    await page.getByRole("button", { name: "发送消息" }).click();
+    await expect(page.locator(".agent-message-row.is-assistant").last()).toBeVisible();
+
+    const userRow = page.locator(".agent-message-row.is-user").first();
+    await userRow.getByRole("button", { name: "编辑并重发" }).click();
+    const inlineEditor = userRow.getByRole("textbox", { name: "编辑消息" });
+    await expect(inlineEditor).toHaveValue("请帮我整理项目经历");
+    await expect(composer).toHaveValue("");
+
+    await userRow.getByRole("button", { name: "确认并重发" }).click();
+    await expect.poll(() => turnRequestCount).toBe(2);
+    await expect(userRow.getByText("请帮我整理项目经历")).toBeVisible();
+
+    await userRow.getByRole("button", { name: "编辑并重发" }).click();
+    const changedEditor = userRow.getByRole("textbox", { name: "编辑消息" });
+    await changedEditor.fill("请先帮我整理最近一段项目经历");
+    await page.screenshot({ path: "artifacts/agent-inline-editor-after-1366x768.png", fullPage: true });
+    await userRow.getByRole("button", { name: "取消" }).click();
+    await expect(userRow.getByText("请帮我整理项目经历")).toBeVisible();
+
+    await userRow.getByRole("button", { name: "编辑并重发" }).click();
+    await userRow.getByRole("textbox", { name: "编辑消息" }).fill("请先帮我整理最近一段项目经历");
+    await userRow.getByRole("button", { name: "确认并重发" }).click();
+    await expect(userRow.getByText("请先帮我整理最近一段项目经历")).toBeVisible();
+    await expect.poll(() => turnRequestCount).toBe(3);
+
+    await userRow.getByRole("button", { name: "历史版本" }).click();
+    const versions = page.getByRole("dialog", { name: "消息历史版本" });
+    await expect(versions).toContainText("当前版本");
+    await expect(versions).toContainText("请帮我整理项目经历");
+    await page.screenshot({ path: "artifacts/agent-message-history-after-1366x768.png", fullPage: true });
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await page.screenshot({ path: "artifacts/agent-message-history-after-1024x768.png", fullPage: true });
+  });
+
+  test("regenerates the selected AI reply in place and executes a new turn", async ({ page }) => {
+    let turnRequestCount = 0;
+    page.on("request", (request) => {
+      if (request.method() === "POST" && /\/api\/agent\/(?:turn|stream)$/.test(new URL(request.url()).pathname)) {
+        turnRequestCount += 1;
+      }
+    });
+    await page.goto("/ai-workspace");
+    await page.getByLabel("描述你的求职任务").fill("请帮我整理项目经历");
+    await page.getByRole("button", { name: "发送消息" }).click();
+
+    const assistantRows = page.locator(".agent-message-row.is-assistant");
+    await expect(assistantRows).toHaveCount(1);
+    await expect.poll(() => turnRequestCount).toBe(1);
+    const messageId = await assistantRows.first().getAttribute("data-message-id");
+
+    await assistantRows.first().getByRole("button", { name: "重新生成" }).click();
+    await expect(assistantRows).toHaveCount(1);
+    await expect.poll(() => turnRequestCount).toBe(2);
+    await expect(assistantRows.first()).toHaveAttribute("data-message-id", messageId ?? "");
+    await expect(assistantRows.first().getByRole("button", { name: "重新生成" })).toBeVisible();
+  });
+
+  test("shows the six-card AI-first zero state without fixed artifacts or overflow", async ({ page }) => {
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await page.goto("/");
+
+    await expect(page.getByRole("heading", { name: "今天想从哪一步开始？" })).toBeVisible();
+    const cards = page.locator(".agent-quick-card");
+    await expect(cards).toHaveCount(6);
+    await expect(cards.filter({ hasText: "即将开放" })).toHaveCount(0);
+    await expect(page.locator(".workspace-topbar")).toHaveCount(0);
+    await expect(page.locator(".agent-composer")).toBeVisible();
+    await expect(page.locator(".agent-artifact-drawer")).toHaveCount(0);
+    expect(await page.locator("html").evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(0);
+    expect(await page.locator(".agent-workspace").evaluate((node) => node.scrollHeight - node.clientHeight)).toBeLessThanOrEqual(1);
+    await page.screenshot({ path: "artifacts/agent-workspace-1024x768.png", fullPage: true });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.screenshot({ path: "artifacts/agent-workspace-1440x900.png", fullPage: true });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const reducedTransitionMs = await cards.first().evaluate((element) => {
+      const value = getComputedStyle(element).transitionDuration.split(",")[0]?.trim() ?? "0s";
+      return value.endsWith("ms") ? Number.parseFloat(value) : Number.parseFloat(value) * 1000;
+    });
+    expect(reducedTransitionMs).toBeLessThanOrEqual(0.02);
+  });
+
+  test("starts an explicit advanced workflow, preserves it across an asset page, and handles PDF as partial", async ({ page }) => {
+    await page.goto("/ai-workspace");
+    await page.getByLabel("描述你的求职任务").fill("优化已有简历");
+    await page.getByRole("button", { name: "发送消息" }).click();
+    await expect(page).toHaveURL(/\/ai-workspace$/);
+    await expect(page.getByRole("heading", { name: "今天想从哪一步开始？" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "生成岗位定制简历" })).toBeVisible();
+
+    await page.goto("/resume");
+    await expect(page.getByText("正在处理")).toBeVisible();
+    await expect(page.getByRole("status").getByText("生成岗位定制简历")).toBeVisible();
+    await page.getByRole("link", { name: "返回任务" }).click();
+    await expect(page.getByRole("heading", { name: "生成岗位定制简历" })).toBeVisible();
+
+    await page.locator('input[type="file"]').setInputFiles("tests/fixtures/pdf/chinese-resume-reportlab.pdf");
+    await expect(page.locator(".agent-artifact-drawer")).toBeVisible();
+    await expect(page.getByText(/当前 Agent Tool 需要已有 PDF 导入流程/)).toBeVisible();
+    await expect(page).toHaveURL(/\/ai-workspace$/);
+    await page.getByRole("button", { name: "关闭任务产物" }).last().click();
+    await expect(page.getByRole("button", { name: /产物 1/ })).toBeVisible();
+  });
+
+  test("switches between AI, collaboration, and manual shells without horizontal overflow", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "协作" }).click();
+    await expect(page.locator(".agent-dock")).toBeVisible();
+    await expect(page.locator(".workspace-topbar")).toBeVisible();
+
+    await page.goto("/");
+    await page.getByRole("button", { name: "手动" }).click();
+    await expect(page.getByRole("heading", { name: "首页" })).toBeVisible();
+    await expect(page.locator(".agent-workspace")).toHaveCount(0);
+    expect(await page.locator("html").evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(0);
+  });
+
+  test("tailors an existing resume, confirms a new revision, and restores the completed session", async ({ page }) => {
+    let returnDiffs = false;
+    await page.route("**/api/ai/structured", async (route) => {
+      const body = route.request().postDataJSON() as {
+        task: string;
+        input: {
+          target?: { sectionId: string; itemId: string; fieldPath: string };
+          currentContent?: { fieldValue: string | string[] };
+          relevantRequirements?: Array<{ requirementId: string; keywords: string[] }>;
+          allowedEvidenceRefs?: unknown[];
+          allowedFacts?: Array<{ value: string; evidenceRefs: unknown[] }>;
+        };
+      };
+      if (body.task !== "resume-tailor-diff") {
+        await route.continue();
+        return;
+      }
+      const input = body.input;
+      const evidenceRefs = input.allowedEvidenceRefs ?? [];
+      const requirementIds = (input.relevantRequirements ?? []).map((item) => item.requirementId).slice(0, 2);
+      const original = input.currentContent?.fieldValue ?? "";
+      const rewrite = (text: string) => text.trim().endsWith("。")
+        ? `${text.trim().slice(0, -1)}；`
+        : `${text.trim()}。`;
+      const value = Array.isArray(original)
+        ? [rewrite(original[0] ?? "负责相关工作"), ...original.slice(1)]
+        : rewrite(original);
+      const output = returnDiffs && input.target && JSON.stringify(value) !== JSON.stringify(original)
+        ? {
+            diffs: [{
+              target: {
+                sectionId: input.target.sectionId,
+                itemId: input.target.itemId,
+                fieldPath: input.target.fieldPath
+              },
+              operation: "replace",
+              original,
+              value,
+              reason: "基于现有证据突出与岗位相关的交付重点。",
+              requirementIds,
+              targetKeywords: (input.relevantRequirements ?? []).flatMap((item) => item.keywords).slice(0, 3),
+              evidenceRefs,
+              supportLevel: evidenceRefs.length ? "verified" : "user_declared"
+            }],
+            clarifications: []
+          }
+        : {
+            diffs: [],
+            clarifications: [{
+              question: "请补充一个你能确认的相关交付案例。",
+              requirementIds: requirementIds.length ? requirementIds : ["requirement-fallback"],
+              answerType: "text"
+            }]
+          };
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          ok: true,
+          task: body.task,
+          promptVersion: "agent-e2e-diff.v1",
+          output,
+          meta: { provider: "fixture", model: "agent-e2e", inputLength: 1, outputLength: 1, latencyMs: 1 }
+        })
+      });
+    });
+
+    await page.goto("/resume");
+    await page.getByRole("button", { name: /从个人资料库创建/ }).click();
+    await expect(page.getByTestId("resume-studio-shell")).toBeVisible({ timeout: 20_000 });
+
+    await page.goto("/ai-workspace");
+    await page.getByLabel("描述你的求职任务").fill("优化已有简历");
+    await page.getByRole("button", { name: "发送消息" }).click();
+    await page.getByLabel("选择已有简历").selectOption({ index: 1 });
+    await page.getByRole("button", { name: "使用这份简历" }).click();
+    await page.getByLabel("岗位名称").fill("高级产品经理");
+    await page.getByLabel("公司").fill("目标科技");
+    await page.getByLabel("岗位描述").fill([
+      "工作职责",
+      "1. 参与 AI 应用项目的需求梳理、原型设计和功能验收。",
+      "2. 使用 Stata 清洗业务数据并完成统计分析。",
+      "岗位要求",
+      "1. 熟悉 TypeScript 与自动化测试。",
+      "2. 具备跨团队沟通与交付能力。"
+    ].join("\n"));
+    await page.getByRole("button", { name: "解析岗位" }).click();
+    await expect(page.getByText(/岗位语义核对/).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "保存这个岗位？" })).toBeVisible();
+    await page.getByRole("button", { name: "确认", exact: true }).click();
+    await page.getByRole("button", { name: "分析匹配并生成建议" }).click();
+    await expect(page.locator(".agent-interactive-card")).not.toHaveAttribute("data-workflow-step", "generate_plan", { timeout: 20_000 });
+    await expect(page.locator("#agent-question-answer")).toBeVisible({ timeout: 60_000 });
+    await page.locator("#agent-question-answer").fill("我参与过 AI 应用项目的需求梳理、原型设计和功能验收。");
+    await page.getByRole("button", { name: "提交回答" }).click();
+    await expect(page.getByRole("heading", { name: "使用这项补充信息？" })).toBeVisible();
+    returnDiffs = true;
+    await page.getByRole("button", { name: "确认", exact: true }).click();
+    await expect(page.getByText("定制修改").first()).toBeVisible({ timeout: 60_000 });
+    await page.getByRole("button", { name: "预览将应用的修改" }).click();
+    await expect(page.getByRole("heading", { name: "应用这些简历修改？" })).toBeVisible();
+    await page.getByRole("button", { name: "确认", exact: true }).click();
+    await expect(page.getByText("新版本已创建")).toBeVisible({ timeout: 20_000 });
+    await page.getByRole("link", { name: "打开简历编辑器" }).click();
+    await expect(page).toHaveURL(/\/resume\?branchId=/);
+
+    await page.goto("/ai-workspace");
+    await expect(page.getByText("新版本已创建")).toBeVisible();
+    await page.getByRole("button", { name: /历史记录/ }).click();
+    await expect(page.getByRole("dialog", { name: "历史记录" })).toBeVisible();
+    await expect(page.locator(".agent-history-list > button")).toHaveCount(1);
+  });
+});
